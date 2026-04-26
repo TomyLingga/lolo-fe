@@ -1,0 +1,283 @@
+"use client";
+import { useState, useEffect, useCallback } from "react";
+import AppLayout from "@/components/layout/AppLayout";
+import PageHeader from "@/components/ui/PageHeader";
+import Modal from "@/components/ui/Modal";
+import ConfirmDialog from "@/components/ui/ConfirmDialog";
+import { tariffLoloApi, tariffStorageApi, yardsApi, containerSizesApi, containerTypesApi, cargoStatusesApi } from "@/lib/api";
+import { formatDate, formatCurrency, getErrorMessage, cn } from "@/lib/utils";
+import toast from "react-hot-toast";
+import type { TariffLolo, TariffStorage, Yard, ContainerSize, ContainerType, CargoStatus } from "@/types";
+
+type TabType = "lolo" | "storage";
+
+export default function TariffsPage() {
+  const [tab, setTab] = useState<TabType>("lolo");
+
+  // Master data
+  const [yards, setYards] = useState<Yard[]>([]);
+  const [sizes, setSizes] = useState<ContainerSize[]>([]);
+  const [types, setTypes] = useState<ContainerType[]>([]);
+  const [statuses, setStatuses] = useState<CargoStatus[]>([]);
+
+  // Lolo tariffs
+  const [loloData, setLoloData] = useState<TariffLolo[]>([]);
+  const [loloLoading, setLoloLoading] = useState(false);
+  const [loloForm, setLoloForm] = useState({ yard_id: "", container_size_id: "", container_type_id: "", cargo_status_id: "", price_lift_off: "", price_lift_on: "", effective_date: "" });
+  const [loloFormOpen, setLoloFormOpen] = useState(false);
+  const [editLolo, setEditLolo] = useState<TariffLolo | null>(null);
+  const [loloSaving, setLoloSaving] = useState(false);
+  const [loloDeactivate, setLoloDeactivate] = useState<TariffLolo | null>(null);
+
+  // Storage tariffs
+  const [storageData, setStorageData] = useState<TariffStorage[]>([]);
+  const [storageLoading, setStorageLoading] = useState(false);
+  const [storageForm, setStorageForm] = useState({ yard_id: "", container_size_id: "", container_type_id: "", cargo_status_id: "", price_per_day: "", effective_date: "" });
+  const [storageFormOpen, setStorageFormOpen] = useState(false);
+  const [editStorage, setEditStorage] = useState<TariffStorage | null>(null);
+  const [storageSaving, setStorageSaving] = useState(false);
+  const [storageDeactivate, setStorageDeactivate] = useState<TariffStorage | null>(null);
+  const [deactivateLoading, setDeactivateLoading] = useState(false);
+
+  useEffect(() => {
+    Promise.all([yardsApi.getAll(), containerSizesApi.getAll(), containerTypesApi.getAll(), cargoStatusesApi.getAll()])
+      .then(([y, s, t, c]) => {
+        setYards(y.data.data); setSizes(s.data.data); setTypes(t.data.data); setStatuses(c.data.data);
+      }).catch(() => {});
+  }, []);
+
+  const fetchLolo = useCallback(async () => {
+    setLoloLoading(true);
+    try { setLoloData((await tariffLoloApi.getAll()).data.data || []); }
+    catch { toast.error("Gagal memuat tarif LOLO"); }
+    finally { setLoloLoading(false); }
+  }, []);
+
+  const fetchStorage = useCallback(async () => {
+    setStorageLoading(true);
+    try { setStorageData((await tariffStorageApi.getAll()).data.data || []); }
+    catch { toast.error("Gagal memuat tarif Storage"); }
+    finally { setStorageLoading(false); }
+  }, []);
+
+  useEffect(() => { fetchLolo(); fetchStorage(); }, [fetchLolo, fetchStorage]);
+
+  function openLoloForm(t?: TariffLolo) {
+    setEditLolo(t || null);
+    if (t) {
+      setLoloForm({ yard_id: String(t.yard_id), container_size_id: String(t.container_size_id), container_type_id: String(t.container_type_id), cargo_status_id: String(t.cargo_status_id), price_lift_off: String(t.price_lift_off), price_lift_on: String(t.price_lift_on), effective_date: t.effective_date?.slice(0, 10) || "" });
+    } else {
+      setLoloForm({ yard_id: "", container_size_id: "", container_type_id: "", cargo_status_id: "", price_lift_off: "", price_lift_on: "", effective_date: "" });
+    }
+    setLoloFormOpen(true);
+  }
+
+  function openStorageForm(t?: TariffStorage) {
+    setEditStorage(t || null);
+    if (t) {
+      setStorageForm({ yard_id: String(t.yard_id), container_size_id: String(t.container_size_id), container_type_id: String(t.container_type_id), cargo_status_id: String(t.cargo_status_id), price_per_day: String(t.price_per_day), effective_date: t.effective_date?.slice(0, 10) || "" });
+    } else {
+      setStorageForm({ yard_id: "", container_size_id: "", container_type_id: "", cargo_status_id: "", price_per_day: "", effective_date: "" });
+    }
+    setStorageFormOpen(true);
+  }
+
+  async function saveLolo(e: React.FormEvent) {
+    e.preventDefault(); setLoloSaving(true);
+    try {
+      const payload = { yard_id: Number(loloForm.yard_id), container_size_id: Number(loloForm.container_size_id), container_type_id: Number(loloForm.container_type_id), cargo_status_id: Number(loloForm.cargo_status_id), price_lift_off: Number(loloForm.price_lift_off), price_lift_on: Number(loloForm.price_lift_on), effective_date: loloForm.effective_date };
+      if (editLolo) await tariffLoloApi.update(editLolo.id, payload);
+      else await tariffLoloApi.create(payload);
+      toast.success("Tarif LOLO disimpan"); setLoloFormOpen(false); fetchLolo();
+    } catch (err) { toast.error(getErrorMessage(err)); }
+    finally { setLoloSaving(false); }
+  }
+
+  async function saveStorage(e: React.FormEvent) {
+    e.preventDefault(); setStorageSaving(true);
+    try {
+      const payload = { yard_id: Number(storageForm.yard_id), container_size_id: Number(storageForm.container_size_id), container_type_id: Number(storageForm.container_type_id), cargo_status_id: Number(storageForm.cargo_status_id), price_per_day: Number(storageForm.price_per_day), effective_date: storageForm.effective_date };
+      if (editStorage) await tariffStorageApi.update(editStorage.id, payload);
+      else await tariffStorageApi.create(payload);
+      toast.success("Tarif Storage disimpan"); setStorageFormOpen(false); fetchStorage();
+    } catch (err) { toast.error(getErrorMessage(err)); }
+    finally { setStorageSaving(false); }
+  }
+
+  async function deactivateLolo() {
+    if (!loloDeactivate) return; setDeactivateLoading(true);
+    try { await tariffLoloApi.deactivate(loloDeactivate.id); toast.success("Tarif dinonaktifkan"); setLoloDeactivate(null); fetchLolo(); }
+    catch (err) { toast.error(getErrorMessage(err)); }
+    finally { setDeactivateLoading(false); }
+  }
+
+  async function deactivateStorage() {
+    if (!storageDeactivate) return; setDeactivateLoading(true);
+    try { await tariffStorageApi.deactivate(storageDeactivate.id); toast.success("Tarif dinonaktifkan"); setStorageDeactivate(null); fetchStorage(); }
+    catch (err) { toast.error(getErrorMessage(err)); }
+    finally { setDeactivateLoading(false); }
+  }
+
+  const MasterSelects = ({ form, setForm }: { form: Record<string, string>; setForm: (f: Record<string, string>) => void }) => (
+    <>
+      <div><label className="label">Yard <span className="text-red-400">*</span></label>
+        <select className="input" required value={form.yard_id} onChange={e => setForm({ ...form, yard_id: e.target.value })}>
+          <option value="">-- Pilih --</option>{yards.map(y => <option key={y.id} value={y.id}>{y.name}</option>)}
+        </select></div>
+      <div><label className="label">Ukuran Container <span className="text-red-400">*</span></label>
+        <select className="input" required value={form.container_size_id} onChange={e => setForm({ ...form, container_size_id: e.target.value })}>
+          <option value="">-- Pilih --</option>{sizes.map(s => <option key={s.id} value={s.id}>{s.code} - {s.description}</option>)}
+        </select></div>
+      <div><label className="label">Tipe Container <span className="text-red-400">*</span></label>
+        <select className="input" required value={form.container_type_id} onChange={e => setForm({ ...form, container_type_id: e.target.value })}>
+          <option value="">-- Pilih --</option>{types.map(t => <option key={t.id} value={t.id}>{t.code} - {t.description}</option>)}
+        </select></div>
+      <div><label className="label">Status Kargo <span className="text-red-400">*</span></label>
+        <select className="input" required value={form.cargo_status_id} onChange={e => setForm({ ...form, cargo_status_id: e.target.value })}>
+          <option value="">-- Pilih --</option>{statuses.map(s => <option key={s.id} value={s.id}>{s.code} - {s.description}</option>)}
+        </select></div>
+    </>
+  );
+
+  return (
+    <AppLayout>
+      <div className="p-4 sm:p-6">
+        <PageHeader title="Tarif" subtitle="Manajemen tarif LOLO dan Storage" />
+
+        <div className="flex gap-1 bg-slate-800 p-1 rounded-lg w-fit mb-6">
+          {(["lolo", "storage"] as TabType[]).map(t => (
+            <button key={t} onClick={() => setTab(t)}
+              className={cn("px-4 py-2 rounded-md text-sm font-medium transition-all",
+                tab === t ? "bg-brand-600 text-white" : "text-slate-400 hover:text-white")}>
+              {t === "lolo" ? "Tarif LOLO" : "Tarif Storage"}
+            </button>
+          ))}
+        </div>
+
+        {/* ── LOLO tab ── */}
+        {tab === "lolo" && (
+          <div className="card overflow-hidden">
+            <div className="flex items-center justify-between px-4 py-3 border-b border-slate-800">
+              <p className="text-sm font-semibold text-white">Tarif LOLO</p>
+              <button className="btn-primary btn-sm" onClick={() => openLoloForm()}>+ Tambah</button>
+            </div>
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead className="bg-slate-800/60">
+                  <tr>{["Yard", "Ukuran", "Tipe", "Cargo Status", "Harga Lift Off", "Harga Lift On", "Eff. Date", "Aksi"].map(h => (
+                    <th key={h} className="px-4 py-3 text-left table-header whitespace-nowrap">{h}</th>
+                  ))}</tr>
+                </thead>
+                <tbody>
+                  {loloLoading ? <tr><td colSpan={8} className="px-4 py-10 text-center text-slate-500">Memuat...</td></tr>
+                  : loloData.length === 0 ? <tr><td colSpan={8} className="px-4 py-10 text-center text-slate-500">Tidak ada data</td></tr>
+                  : loloData.map(t => (
+                    <tr key={t.id} className={cn("table-row", !t.is_active && "opacity-40")}>
+                      <td className="px-4 py-3 text-slate-300">{t.yard?.name || "-"}</td>
+                      <td className="px-4 py-3 text-slate-300">{t.container_size?.code || "-"}</td>
+                      <td className="px-4 py-3 text-slate-300">{t.container_type?.code || "-"}</td>
+                      <td className="px-4 py-3 text-slate-300">{t.cargo_status?.code || "-"}</td>
+                      <td className="px-4 py-3 text-slate-300">{formatCurrency(t.price_lift_off)}</td>
+                      <td className="px-4 py-3 text-slate-300">{formatCurrency(t.price_lift_on)}</td>
+                      <td className="px-4 py-3 text-slate-400">{formatDate(t.effective_date)}</td>
+                      <td className="px-4 py-3"><div className="flex gap-1">
+                        <button className="btn btn-sm btn-ghost" onClick={() => openLoloForm(t)} title="Edit">
+                          <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" /></svg>
+                        </button>
+                        <button className="btn btn-sm btn-ghost text-red-400" onClick={() => setLoloDeactivate(t)} title="Nonaktifkan">
+                          <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636" /></svg>
+                        </button>
+                      </div></td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        )}
+
+        {/* ── Storage tab ── */}
+        {tab === "storage" && (
+          <div className="card overflow-hidden">
+            <div className="flex items-center justify-between px-4 py-3 border-b border-slate-800">
+              <p className="text-sm font-semibold text-white">Tarif Storage</p>
+              <button className="btn-primary btn-sm" onClick={() => openStorageForm()}>+ Tambah</button>
+            </div>
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead className="bg-slate-800/60">
+                  <tr>{["Yard", "Ukuran", "Tipe", "Cargo Status", "Harga/Hari", "Eff. Date", "Aksi"].map(h => (
+                    <th key={h} className="px-4 py-3 text-left table-header whitespace-nowrap">{h}</th>
+                  ))}</tr>
+                </thead>
+                <tbody>
+                  {storageLoading ? <tr><td colSpan={7} className="px-4 py-10 text-center text-slate-500">Memuat...</td></tr>
+                  : storageData.length === 0 ? <tr><td colSpan={7} className="px-4 py-10 text-center text-slate-500">Tidak ada data</td></tr>
+                  : storageData.map(t => (
+                    <tr key={t.id} className={cn("table-row", !t.is_active && "opacity-40")}>
+                      <td className="px-4 py-3 text-slate-300">{t.yard?.name || "-"}</td>
+                      <td className="px-4 py-3 text-slate-300">{t.container_size?.code || "-"}</td>
+                      <td className="px-4 py-3 text-slate-300">{t.container_type?.code || "-"}</td>
+                      <td className="px-4 py-3 text-slate-300">{t.cargo_status?.code || "-"}</td>
+                      <td className="px-4 py-3 text-slate-300">{formatCurrency(t.price_per_day)}</td>
+                      <td className="px-4 py-3 text-slate-400">{formatDate(t.effective_date)}</td>
+                      <td className="px-4 py-3"><div className="flex gap-1">
+                        <button className="btn btn-sm btn-ghost" onClick={() => openStorageForm(t)} title="Edit">
+                          <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" /></svg>
+                        </button>
+                        <button className="btn btn-sm btn-ghost text-red-400" onClick={() => setStorageDeactivate(t)} title="Nonaktifkan">
+                          <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636" /></svg>
+                        </button>
+                      </div></td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        )}
+
+        {/* LOLO Form Modal */}
+        <Modal open={loloFormOpen} onClose={() => setLoloFormOpen(false)} title={editLolo ? "Edit Tarif LOLO" : "Tambah Tarif LOLO"} size="lg">
+          <form onSubmit={saveLolo} className="space-y-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <MasterSelects form={loloForm} setForm={f => setLoloForm(f as typeof loloForm)} />
+              <div><label className="label">Harga Lift Off (Rp) <span className="text-red-400">*</span></label>
+                <input className="input" type="number" required min={0} value={loloForm.price_lift_off} onChange={e => setLoloForm(p => ({ ...p, price_lift_off: e.target.value }))} /></div>
+              <div><label className="label">Harga Lift On (Rp) <span className="text-red-400">*</span></label>
+                <input className="input" type="number" required min={0} value={loloForm.price_lift_on} onChange={e => setLoloForm(p => ({ ...p, price_lift_on: e.target.value }))} /></div>
+              <div><label className="label">Tanggal Efektif <span className="text-red-400">*</span></label>
+                <input className="input" type="date" required value={loloForm.effective_date} onChange={e => setLoloForm(p => ({ ...p, effective_date: e.target.value }))} /></div>
+            </div>
+            <div className="flex gap-3 justify-end pt-2 border-t border-slate-800">
+              <button type="button" className="btn-secondary" onClick={() => setLoloFormOpen(false)}>Batal</button>
+              <button type="submit" className="btn-primary" disabled={loloSaving}>{loloSaving ? "Menyimpan..." : "Simpan"}</button>
+            </div>
+          </form>
+        </Modal>
+
+        {/* Storage Form Modal */}
+        <Modal open={storageFormOpen} onClose={() => setStorageFormOpen(false)} title={editStorage ? "Edit Tarif Storage" : "Tambah Tarif Storage"} size="lg">
+          <form onSubmit={saveStorage} className="space-y-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <MasterSelects form={storageForm} setForm={f => setStorageForm(f as typeof storageForm)} />
+              <div><label className="label">Harga per Hari (Rp) <span className="text-red-400">*</span></label>
+                <input className="input" type="number" required min={0} value={storageForm.price_per_day} onChange={e => setStorageForm(p => ({ ...p, price_per_day: e.target.value }))} /></div>
+              <div><label className="label">Tanggal Efektif <span className="text-red-400">*</span></label>
+                <input className="input" type="date" required value={storageForm.effective_date} onChange={e => setStorageForm(p => ({ ...p, effective_date: e.target.value }))} /></div>
+            </div>
+            <div className="flex gap-3 justify-end pt-2 border-t border-slate-800">
+              <button type="button" className="btn-secondary" onClick={() => setStorageFormOpen(false)}>Batal</button>
+              <button type="submit" className="btn-primary" disabled={storageSaving}>{storageSaving ? "Menyimpan..." : "Simpan"}</button>
+            </div>
+          </form>
+        </Modal>
+
+        <ConfirmDialog open={!!loloDeactivate} onClose={() => setLoloDeactivate(null)} onConfirm={deactivateLolo}
+          title="Nonaktifkan Tarif LOLO" message="Yakin nonaktifkan tarif LOLO ini?" confirmLabel="Nonaktifkan" danger loading={deactivateLoading} />
+        <ConfirmDialog open={!!storageDeactivate} onClose={() => setStorageDeactivate(null)} onConfirm={deactivateStorage}
+          title="Nonaktifkan Tarif Storage" message="Yakin nonaktifkan tarif Storage ini?" confirmLabel="Nonaktifkan" danger loading={deactivateLoading} />
+      </div>
+    </AppLayout>
+  );
+}
