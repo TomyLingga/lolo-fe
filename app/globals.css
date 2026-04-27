@@ -4,7 +4,7 @@
 
 @layer base {
   * { box-sizing: border-box; }
-  html { -webkit-text-size-adjust: 100%; scroll-behavior: smooth; color-scheme: dark; }
+  html { -webkit-text-size-adjust: 100%; scroll-behavior: smooth; }
   body {
     @apply antialiased;
     font-family: 'Inter', system-ui, sans-serif;
@@ -65,7 +65,6 @@
   }
   .input:disabled { opacity: 0.5; cursor: not-allowed; }
   select.input { @apply cursor-pointer; }
-  select.input option { background-color: #181818; color: #e5e5e5; }
   .label { @apply block text-xs font-medium text-slate-400 mb-1.5; }
 
   /* ── Badges ─────────────────────────────────────────────────────────────────── */
