@@ -1,10 +1,8 @@
 "use client";
-import { useState, useEffect } from "react";
 import Modal from "@/components/ui/Modal";
 import Timeline from "@/components/ui/Timeline";
-import { storageRecordsApi } from "@/lib/api";
 import { formatDateTime, formatDate } from "@/lib/utils";
-import type { Registration, StorageRecord } from "@/types";
+import type { Registration } from "@/types";
 
 interface Props {
   open: boolean;
@@ -13,17 +11,8 @@ interface Props {
 }
 
 export default function StorageTimelineModal({ open, onClose, registration }: Props) {
-  const [records, setRecords] = useState<StorageRecord[]>([]);
-  const [loading, setLoading] = useState(false);
-
-  useEffect(() => {
-    if (!open || !registration) return;
-    setLoading(true);
-    storageRecordsApi.getByRegistration(registration.id)
-      .then(r => setRecords(r.data.data || []))
-      .catch(() => {})
-      .finally(() => setLoading(false));
-  }, [open, registration]);
+  // Langsung ambil dari data registrasi, tidak perlu fetch API lagi
+  const records = registration?.storage_records || [];
 
   const items = records.map(r => ({
     id: r.id,
@@ -40,7 +29,11 @@ export default function StorageTimelineModal({ open, onClose, registration }: Pr
 
   return (
     <Modal open={open} onClose={onClose} title="Riwayat Storage" size="md">
-      {loading ? <p className="text-center text-slate-500 py-8">Memuat...</p> : <Timeline items={items} />}
+      {records.length === 0 ? (
+        <p className="text-center text-slate-500 py-8">Belum ada riwayat Storage</p>
+      ) : (
+        <Timeline items={items} />
+      )}
     </Modal>
   );
 }

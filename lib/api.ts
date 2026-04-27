@@ -110,8 +110,8 @@ export const registrationsApi = {
   update: (id: number, data: Partial<Registration>) =>
     api.put<{ data: Registration }>(`/registrations/${id}`, data),
   deactivate: (id: number) => api.delete(`/registrations/${id}`),
-  close: (id: number, remark?: string) =>
-    api.post(`/registrations/${id}/close`, { remark }),
+  close: (id: number, data: { remark: string }) => 
+    api.post(`/registrations/${id}/close`, data),
 };
 
 // ─── Lolo Records ────────────────────────────────────────────────────────────
@@ -147,14 +147,58 @@ export const invoicesApi = {
   getAll: (params?: { date_from?: string; date_to?: string; status?: string }) =>
     api.get<{ data: Invoice[] }>("/invoices", { params }),
   getById: (id: number) => api.get<{ data: Invoice }>(`/invoices/${id}`),
-  create: (data: Partial<Invoice> & { registration_ids: number[] }) =>
+  create: (data: Partial<Invoice> & { registration_ids: number[], tax_ids?: number[] }) =>
     api.post<{ data: Invoice }>("/invoices", data),
   update: (id: number, data: Partial<Invoice>) =>
     api.put<{ data: Invoice }>(`/invoices/${id}`, data),
   pay: (id: number) => api.get(`/invoices/${id}/pay`),
   deactivate: (id: number) => api.delete(`/invoices/${id}`),
   getInvoiceableRegistrations: (ffId: number) =>
-    api.get<{ data: Registration[] }>(`/freight-forwarders/${ffId}/registrations/invoiceable`),
+    api.get<{ data: { freight_forwarder: FreightForwarder, registrations: Registration[] } }>(`/freight-forwarders/${ffId}/registrations/invoiceable`),
   getPdfUrl: (id: number) =>
     `${process.env.NEXT_PUBLIC_API_URL}/invoices/${id}/pdf`,
 };
+
+// ─── Dashboard ────────────────────────────────────────────────────────────────
+export interface YardMapBlock {
+  id: number;
+  block_code: string;
+  max_length: number;
+  max_width: number;
+  max_height: number;
+  capacity: number;
+  is_active: boolean;
+  occupied_count: number;
+  is_highlighted: boolean;
+  registrations: {
+    id: number;
+    container_number: string;
+    no_do_jo?: string;
+    shipper_tenant?: string;
+    freight_forwarder?: { id: number; name: string };
+    size?: { id: number; code: string; description: string };
+    type?: { id: number; code: string; description: string };
+    pos_length: number;
+    pos_width: number;
+    pos_height: number;
+    start_date: string;
+  }[];
+}
+
+export interface YardMapYard {
+  id: number;
+  name: string;
+  code: string;
+  total_blocks: number;
+  total_capacity: number;
+  total_occupied: number;
+  blocks: YardMapBlock[];
+}
+
+export const dashboardApi = {
+  getYardMap: (container_number?: string) =>
+    api.get<{ data: YardMapYard[] }>("/dashboard/yard-map", {
+      params: container_number ? { container_number } : undefined,
+    }),
+};
+

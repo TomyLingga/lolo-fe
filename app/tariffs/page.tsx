@@ -1,5 +1,5 @@
 "use client";
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import AppLayout from "@/components/layout/AppLayout";
 import PageHeader from "@/components/ui/PageHeader";
 import Modal from "@/components/ui/Modal";
@@ -60,7 +60,16 @@ export default function TariffsPage() {
     finally { setStorageLoading(false); }
   }, []);
 
-  useEffect(() => { fetchLolo(); fetchStorage(); }, [fetchLolo, fetchStorage]);
+  // Guard: fetch only once even in StrictMode
+  const hasFetched = useRef(false);
+
+  useEffect(() => {
+    if (hasFetched.current) return;
+    hasFetched.current = true;
+    fetchLolo();
+    fetchStorage();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   function openLoloForm(t?: TariffLolo) {
     setEditLolo(t || null);

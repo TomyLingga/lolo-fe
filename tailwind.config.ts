@@ -10,23 +10,24 @@ const config: Config = {
     extend: {
       colors: {
         brand: {
-          50:  "#eef7ff",
-          100: "#d9ecff",
-          200: "#bbdeff",
-          300: "#8dcaff",
-          400: "#58adff",
-          500: "#2f8eff",
-          600: "#1a6ff5",
-          700: "#1358e1",
-          800: "#1646b6",
-          900: "#183e8f",
-          950: "#132757",
+          50:  "#fdf2f2",
+          100: "#fbe4e4",
+          200: "#f7c7c7",
+          300: "#f29c9c",
+          400: "#eb6464",
+          500: "#e50914", // Netflix Red
+          600: "#b80710",
+          700: "#93060d",
+          800: "#75050a",
+          900: "#600408",
+          950: "#360205",
         },
         slate: {
-          850: "#1a2234",
-          950: "#0b1120",
+          850: "#181818",
+          950: "#141414", // Netflix Dark Background
         }
       },
+
       fontFamily: {
         sans: ["var(--font-geist-sans)", "system-ui", "sans-serif"],
         mono: ["var(--font-geist-mono)", "monospace"],

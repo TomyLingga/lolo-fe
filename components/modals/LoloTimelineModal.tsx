@@ -1,10 +1,8 @@
 "use client";
-import { useState, useEffect } from "react";
 import Modal from "@/components/ui/Modal";
 import Timeline from "@/components/ui/Timeline";
-import { loloRecordsApi } from "@/lib/api";
 import { formatDateTime } from "@/lib/utils";
-import type { Registration, LoloRecord } from "@/types";
+import type { Registration } from "@/types";
 
 interface Props {
   open: boolean;
@@ -13,17 +11,8 @@ interface Props {
 }
 
 export default function LoloTimelineModal({ open, onClose, registration }: Props) {
-  const [records, setRecords] = useState<LoloRecord[]>([]);
-  const [loading, setLoading] = useState(false);
-
-  useEffect(() => {
-    if (!open || !registration) return;
-    setLoading(true);
-    loloRecordsApi.getByRegistration(registration.id)
-      .then(r => setRecords(r.data.data || []))
-      .catch(() => {})
-      .finally(() => setLoading(false));
-  }, [open, registration]);
+  // Langsung ambil dari data registrasi, tidak perlu fetch API lagi
+  const records = registration?.lolo_records || [];
 
   const items = records.map(r => ({
     id: r.id,
@@ -43,7 +32,11 @@ export default function LoloTimelineModal({ open, onClose, registration }: Props
 
   return (
     <Modal open={open} onClose={onClose} title="Riwayat LOLO" size="md">
-      {loading ? <p className="text-center text-slate-500 py-8">Memuat...</p> : <Timeline items={items} />}
+      {records.length === 0 ? (
+        <p className="text-center text-slate-500 py-8">Belum ada riwayat LOLO</p>
+      ) : (
+        <Timeline items={items} />
+      )}
     </Modal>
   );
 }

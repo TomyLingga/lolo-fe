@@ -207,7 +207,7 @@ export default function YardsPage() {
                 {blockForms.map((bf, i) => (
                   <div key={i} className="grid grid-cols-5 gap-2 items-end p-3 bg-slate-800/40 rounded-lg">
                     <div><label className="label">Kode Block</label>
-                      <input className="input" required={i === 0} value={bf.block_code} onChange={e => setBlockField(i, "block_code", e.target.value)} placeholder="A1" /></div>
+                      <input className="input" required={i === 0} value={bf.block_code} onChange={e => setBlockField(i, "block_code", e.target.value)} placeholder="A" /></div>
                     <div><label className="label">Max Length</label>
                       <input className="input" type="number" min={1} required={!!bf.block_code} value={bf.max_length} onChange={e => setBlockField(i, "max_length", e.target.value)} /></div>
                     <div><label className="label">Max Width</label>

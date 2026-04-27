@@ -70,7 +70,8 @@ export interface FreightForwarder {
 export interface Tax {
   id: number;
   name: string;
-  percentage: number;
+  value: number;
+  value_type: "PERCENTAGE" | "NOMINAL";
   type: "ADD" | "DEDUCT";
   is_active: boolean;
 }
@@ -120,7 +121,7 @@ export interface Registration {
   vehicle_type?: string;
   vehicle_number?: string;
   operator_name?: string;
-  status: "OPEN" | "CLOSED";
+  record_status: "OPEN" | "CLOSED";
   is_active: boolean;
   created_at: string;
   closed_at?: string;
@@ -131,6 +132,9 @@ export interface Registration {
   last_lolo_type?: "LIFT_ON" | "LIFT_OFF";
   current_yard?: Yard;
   current_block?: Block;
+  lolo_records?: LoloRecord[];
+  storage_records?: StorageRecord[];
+  registration_remarks?: RegistrationRemark[];
 }
 
 export interface LoloRecord {
