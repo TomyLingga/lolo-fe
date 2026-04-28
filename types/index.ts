@@ -135,6 +135,10 @@ export interface Registration {
   lolo_records?: LoloRecord[];
   storage_records?: StorageRecord[];
   registration_remarks?: RegistrationRemark[];
+  created_by?: {
+    id: number;
+    name: string;
+  };
 }
 
 export interface LoloRecord {

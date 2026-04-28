@@ -65,8 +65,12 @@ export default function RegistrationsPage() {
       else if (tab === "CLOSED") res = await registrationsApi.getClosed({ date_from: dateFrom || undefined, date_to: dateTo || undefined });
       else res = await registrationsApi.getAll({ date_from: dateFrom || undefined, date_to: dateTo || undefined });
       setData(res.data.data || []);
-    } catch {
-      toast.error("Gagal memuat data");
+    } catch (err: any) {
+      if (err?.response?.status === 404) {
+        setData([]);
+      } else {
+        toast.error(getErrorMessage(err));
+      }
     } finally {
       setLoading(false);
     }
@@ -274,7 +278,7 @@ export default function RegistrationsPage() {
             <table className="w-full text-sm">
               <thead className="bg-slate-800/60">
                 <tr>
-                  {["No. Container", "Freight Forwarder", "No. DO/JO", "Ukuran/Tipe", "Status", "Posisi", "Tgl. Masuk", "Aksi"].map(h => (
+                  {["No. Container", "Freight Forwarder", "No. DO/JO", "Ukuran/Tipe", "Status", "Posisi", "In / Out", "Aksi"].map(h => (
                     <th key={h} className="px-4 py-3 text-left table-header whitespace-nowrap">{h}</th>
                   ))}
                 </tr>
@@ -338,7 +342,29 @@ export default function RegistrationsPage() {
                             }${sr.pos_length ?? 0}${sr.pos_width ?? 0}${sr.pos_height ?? 0}`;
                         })()}
                       </td>
-                      <td className="px-4 py-3 text-slate-400 text-xs">{formatDateTime(reg.created_at)}</td>
+                      <td className="px-4 py-3 text-xs">
+                        {(() => {
+                          const firstLoloOff = loloRecs.find((l: any) => l.operation_type === "LIFT_OFF");
+                          const lastLoloOn = [...loloRecs].reverse().find((l: any) => l.operation_type === "LIFT_ON");
+                          const inDate = firstLoloOff ? firstLoloOff.lolo_at : reg.created_at;
+                          const outDate = lastLoloOn ? lastLoloOn.lolo_at : null;
+                          const operator = reg.created_by?.name || "-";
+                          
+                          return (
+                            <div className="flex flex-col gap-1.5 min-w-[140px]">
+                              <div>
+                                <div className="text-slate-300"><span className="text-slate-500">In:</span> {formatDateTime(inDate)}</div>
+                                <div className="text-slate-500 mt-0.5">Oleh: <span className="text-slate-400">{operator}</span></div>
+                              </div>
+                              {reg.record_status === "CLOSED" && outDate && (
+                                <div className="pt-1.5 border-t border-slate-700/50">
+                                  <div className="text-brand-400"><span className="text-slate-500">Out:</span> {formatDateTime(outDate)}</div>
+                                </div>
+                              )}
+                            </div>
+                          );
+                        })()}
+                      </td>
                       <td className="px-4 py-3">
                         <div className="flex items-center gap-1 flex-wrap">
 

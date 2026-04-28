@@ -6,7 +6,7 @@ import Modal from "@/components/ui/Modal";
 import ConfirmDialog from "@/components/ui/ConfirmDialog";
 import { invoicesApi, freightForwardersApi, taxesApi } from "@/lib/api";
 import { getUser } from "@/lib/auth";
-import { formatDate, formatCurrency, getErrorMessage, cn } from "@/lib/utils";
+import { formatDate, formatDateTime, formatCurrency, getErrorMessage, cn } from "@/lib/utils";
 import toast from "react-hot-toast";
 import type { Invoice, FreightForwarder, Registration, Tax } from "@/types";
 
@@ -49,6 +49,8 @@ export default function InvoicesPage() {
   const [createForm, setCreateForm] = useState({
     invoice_date: "", bank_name: "", swift_code: "", bank_account_name: "", bank_account_number: "", signatory_name: "", signatory_position: "",
   });
+  const [filterRegFrom, setFilterRegFrom] = useState(getLocalDate(startOfMonth));
+  const [filterRegTo, setFilterRegTo] = useState(getLocalDate(today));
   const [creating, setCreating] = useState(false);
 
   const [payConfirm, setPayConfirm] = useState(false);
@@ -67,8 +69,12 @@ export default function InvoicesPage() {
       const res = await invoicesApi.getAll(params as { date_from?: string; date_to?: string; status?: string });
       // API already filters by status — no client-side re-filter needed
       setData(res.data.data || []);
-    } catch {
-      toast.error("Gagal memuat data");
+    } catch (err: any) {
+      if (err?.response?.status === 404) {
+        setData([]);
+      } else {
+        toast.error(getErrorMessage(err));
+      }
     } finally {
       setLoading(false);
     }
@@ -102,6 +108,8 @@ export default function InvoicesPage() {
       setInvoiceableRegs([]);
       setSelectedRegIds([]);
       setSelectedTaxIds([]);
+      setFilterRegFrom(getLocalDate(startOfMonth));
+      setFilterRegTo(getLocalDate(today));
       return;
     }
 
@@ -113,7 +121,7 @@ export default function InvoicesPage() {
         const regs = responseData.registrations || [];
         setInvoiceableRegs(regs);
       })
-      .catch(() => toast.error("Gagal menarik data registrasi FF ini"))
+      .catch((err) => toast.error(getErrorMessage(err)))
       .finally(() => setFetchingRegs(false));
   }, [selectedFf]);
 
@@ -129,7 +137,7 @@ export default function InvoicesPage() {
       await invoicesApi.create({ ...createForm, freight_forwarder_id: Number(selectedFf), registration_ids: selectedRegIds, tax_ids: selectedTaxIds });
       toast.success("Invoice berhasil dibuat");
       setCreateOpen(false);
-      setSelectedFf(""); setSelectedRegIds([]); setSelectedTaxIds([]);
+      setSelectedFf(""); setSelectedRegIds([]); setSelectedTaxIds([]); setFilterRegFrom(getLocalDate(startOfMonth)); setFilterRegTo(getLocalDate(today));
       fetchData();
     } catch (err) { toast.error(getErrorMessage(err)); }
     finally { setCreating(false); }
@@ -315,17 +323,62 @@ export default function InvoicesPage() {
                 ) : invoiceableRegs.length === 0 ? (
                   <p className="text-sm text-slate-500 py-3">Tidak ada registrasi yang dapat diinvoice</p>
                 ) : (
-                  <div className="space-y-2 max-h-48 overflow-y-auto border border-slate-700 rounded-lg p-3">
-                    {invoiceableRegs.map(r => (
-                      <label key={r.id} className="flex items-center gap-3 cursor-pointer hover:bg-slate-800 p-2 rounded transition-colors">
-                        <input type="checkbox" className="rounded border-slate-600 focus:ring-brand-500"
-                          checked={selectedRegIds.includes(r.id)}
-                          onChange={e => setSelectedRegIds(prev => e.target.checked ? [...prev, r.id] : prev.filter(id => id !== r.id))} />
-                        <span className="font-mono text-sm text-white">{r.container_number}</span>
-                        <span className="text-xs text-slate-500">{r.no_do_jo || "-"}</span>
-                      </label>
-                    ))}
-                  </div>
+                  <>
+                    <div className="flex gap-2 mb-3 bg-slate-800 p-2 rounded-lg border border-slate-700">
+                      <div className="flex-1">
+                        <label className="text-[10px] text-slate-400 uppercase tracking-wider block mb-1">Tgl Keluar Dari</label>
+                        <input type="date" className="input py-1 text-xs" value={filterRegFrom} onChange={e => setFilterRegFrom(e.target.value)} />
+                      </div>
+                      <div className="flex-1">
+                        <label className="text-[10px] text-slate-400 uppercase tracking-wider block mb-1">Tgl Keluar Sampai</label>
+                        <input type="date" className="input py-1 text-xs" value={filterRegTo} onChange={e => setFilterRegTo(e.target.value)} />
+                      </div>
+                      {(filterRegFrom || filterRegTo) && (
+                        <div className="flex items-end pb-1">
+                          <button type="button" onClick={() => { setFilterRegFrom(""); setFilterRegTo(""); }} className="text-[10px] text-brand-400 hover:text-brand-300 px-2 py-1">Reset</button>
+                        </div>
+                      )}
+                    </div>
+
+                    <div className="space-y-2 max-h-48 overflow-y-auto border border-slate-700 rounded-lg p-3">
+                      {invoiceableRegs.filter(r => {
+                        if (!filterRegFrom && !filterRegTo) return true;
+                        const loloRecs = (r as any).lolo_records || [];
+                        const lastLoloOn = [...loloRecs].reverse().find((l: any) => l.operation_type === "LIFT_ON");
+                        if (!lastLoloOn) return false;
+
+                        const d = new Date(lastLoloOn.lolo_at);
+                        const outDateStr = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+
+                        if (filterRegFrom && outDateStr < filterRegFrom) return false;
+                        if (filterRegTo && outDateStr > filterRegTo) return false;
+                        return true;
+                      }).map(r => {
+                        const loloRecs = (r as any).lolo_records || [];
+                        const lastLoloOn = [...loloRecs].reverse().find((l: any) => l.operation_type === "LIFT_ON");
+
+                        return (
+                          <label key={r.id} className="flex items-start gap-3 cursor-pointer hover:bg-slate-800 p-2 rounded transition-colors border border-transparent hover:border-slate-700">
+                            <input type="checkbox" className="rounded border-slate-600 focus:ring-brand-500 mt-1"
+                              checked={selectedRegIds.includes(r.id)}
+                              onChange={e => setSelectedRegIds(prev => e.target.checked ? [...prev, r.id] : prev.filter(id => id !== r.id))} />
+                            <div className="flex flex-col flex-1 min-w-0">
+                              <div className="flex items-center justify-between">
+                                <span className="font-mono text-sm font-bold text-white">{r.container_number}</span>
+                                {lastLoloOn && (
+                                  <span className="text-xs text-brand-400 font-medium">Out: {formatDateTime(lastLoloOn.lolo_at)}</span>
+                                )}
+                              </div>
+                              <div className="flex items-center justify-between mt-1">
+                                <span className="text-[11px] text-slate-400 truncate pr-2">{(r as any).freight_forwarder?.name || (r as any).freight_forwarders?.name || "-"}</span>
+                                <span className="text-[10px] bg-slate-700/50 text-slate-400 px-1.5 py-0.5 rounded border border-slate-700 whitespace-nowrap">DO: {r.no_do_jo || "-"}</span>
+                              </div>
+                            </div>
+                          </label>
+                        );
+                      })}
+                    </div>
+                  </>
                 )}
               </div>
             )}

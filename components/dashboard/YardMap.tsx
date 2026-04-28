@@ -76,7 +76,6 @@ function SlotGridPanel({ block, yardName, onClose }: SlotGridProps) {
                 const l = li + 1;
                 return (
                   <div key={l}>
-                    <p className="text-xs text-slate-600 mb-1.5">Baris L{l}</p>
                     <div className="flex flex-wrap gap-1.5">
                       {Array.from({ length: block.max_width }, (_, wi) => {
                         const w = wi + 1;
@@ -91,7 +90,7 @@ function SlotGridPanel({ block, yardName, onClose }: SlotGridProps) {
                           <button
                             key={w}
                             onClick={() => setSelectedSlot(isSelected ? null : { l, w, h: 1 })}
-                            title={`L${l} W${w} — ${stackCount} kontainer`}
+                            title={`Blok ${block.block_code} L${l} W${w} — ${stackCount} kontainer`}
                             className={[
                               "flex flex-col items-center justify-center rounded-lg border transition-all w-12 h-14 text-xs font-bold",
                               stackCount > 0 && !isSelected
@@ -101,7 +100,7 @@ function SlotGridPanel({ block, yardName, onClose }: SlotGridProps) {
                                 : "bg-slate-800/60 border-slate-700/50 text-slate-600",
                             ].join(" ")}
                           >
-                            <span>W{w}</span>
+                            <span>{block.block_code}{l}{w}</span>
                             {stackCount > 0 && (
                               <span className="text-[10px] font-normal opacity-80">{stackCount}×</span>
                             )}
@@ -236,13 +235,10 @@ function YardSlide({ yard, onBlockClick }: YardSlideProps) {
     ? Math.round((yard.total_occupied / yard.total_capacity) * 100)
     : 0;
 
-  const barColor =
-    pct > 80 ? "linear-gradient(90deg,#f59e0b,#ef4444)" :
-    pct > 40 ? "linear-gradient(90deg,#10b981,#06b6d4)" :
-               "linear-gradient(90deg,#334155,#475569)";
+  const color = pct > 80 ? "#ef4444" : pct > 40 ? "#10b981" : "#3b82f6";
 
   return (
-    <div className="w-full">
+    <div className="w-full bg-slate-800/20 rounded-2xl p-5 border border-slate-800 mb-6 last:mb-0">
       {/* Header */}
       <div className="flex items-center justify-between mb-5 flex-wrap gap-3">
         <div>
@@ -256,11 +252,14 @@ function YardSlide({ yard, onBlockClick }: YardSlideProps) {
             {yard.total_occupied} dari {yard.total_capacity} slot terisi ({yard.total_blocks} blok)
           </p>
         </div>
-        <div className="flex flex-col items-end gap-1.5">
-          <span className="text-2xl font-bold text-white">{pct}%</span>
-          <div className="w-28 h-2 bg-slate-800 rounded-full overflow-hidden">
-            <div className="h-full rounded-full transition-all duration-700"
-              style={{ width: `${pct}%`, background: barColor }} />
+        <div className="flex items-center gap-3">
+          <div 
+            className="w-14 h-14 rounded-full flex items-center justify-center relative shadow-inner"
+            style={{ background: `conic-gradient(${color} ${pct}%, #1e293b 0)` }}
+          >
+            <div className="w-11 h-11 bg-slate-900 rounded-full flex items-center justify-center">
+              <span className="text-xs font-bold text-white">{pct}%</span>
+            </div>
           </div>
         </div>
       </div>
@@ -314,19 +313,10 @@ export default function YardMap({ yards, loading, error, searchQuery, onRetry }:
     setCurrentSlide((prev) => Math.min(prev, Math.max(0, yards.length - 1)));
   }, [yards.length]);
 
-  // Auto-jump to matching yard on search
   useEffect(() => {
     if (!searchQuery || yards.length === 0) return;
-    const idx = yards.findIndex((y) => y.blocks.some((b) => b.is_highlighted));
-    if (idx >= 0 && idx !== currentSlide) goToSlide(idx);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    // Just re-render, the vertical layout naturally shows highlighted blocks
   }, [yards, searchQuery]);
-
-  function goToSlide(idx: number) {
-    if (idx === currentSlide || isTransitioning) return;
-    setIsTransitioning(true);
-    setTimeout(() => { setCurrentSlide(idx); setIsTransitioning(false); }, 180);
-  }
 
   if (loading) {
     return (
@@ -367,52 +357,20 @@ export default function YardMap({ yards, loading, error, searchQuery, onRetry }:
 
   return (
     <>
-      {/* Slider area — extra horizontal padding so arrows don't overlap blocks */}
-      <div className="relative px-10">
-        {/* Slide content */}
-        <div style={{
-          opacity: isTransitioning ? 0 : 1,
-          transform: isTransitioning ? "translateY(6px)" : "translateY(0)",
-          transition: "opacity 0.18s ease, transform 0.18s ease",
-        }}>
-          <YardSlide
-            yard={yards[currentSlide]}
-            onBlockClick={(block, yardName) => { setSelectedBlock(block); setSelectedYardName(yardName); }}
-          />
-        </div>
-
-        {/* Arrows — outside the block area */}
-        {yards.length > 1 && (
-          <>
-            <button onClick={() => goToSlide(Math.max(0, currentSlide - 1))}
-              disabled={currentSlide === 0}
-              className="absolute left-0 top-1/2 -translate-y-1/2 w-8 h-8 rounded-full bg-slate-800 border border-slate-700 flex items-center justify-center text-slate-400 hover:text-white hover:bg-slate-700 disabled:opacity-30 disabled:cursor-not-allowed transition-all">
-              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
-              </svg>
-            </button>
-            <button onClick={() => goToSlide(Math.min(yards.length - 1, currentSlide + 1))}
-              disabled={currentSlide === yards.length - 1}
-              className="absolute right-0 top-1/2 -translate-y-1/2 w-8 h-8 rounded-full bg-slate-800 border border-slate-700 flex items-center justify-center text-slate-400 hover:text-white hover:bg-slate-700 disabled:opacity-30 disabled:cursor-not-allowed transition-all">
-              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-              </svg>
-            </button>
-          </>
-        )}
+      {/* Legend */}
+      <div className="flex justify-end mb-4">
+        <Legend searched={!!searchQuery} />
       </div>
 
-      {/* Dots + Legend */}
-      <div className="flex flex-col sm:flex-row items-center justify-between gap-3 mt-6 pt-4 border-t border-slate-800">
-        {yards.length > 1 ? (
-          <div className="flex items-center gap-2">
-            {yards.map((y, i) => (
-              <button key={y.id} onClick={() => goToSlide(i)} title={y.name}
-                className={`rounded-full transition-all duration-300 ${i === currentSlide ? "w-6 h-2.5 bg-brand-500" : "w-2.5 h-2.5 bg-slate-700 hover:bg-slate-600"}`} />
-            ))}
-          </div>
-        ) : <div />}
-        <Legend searched={!!searchQuery} />
+      {/* Vertical list of Yard slides */}
+      <div className="flex flex-col">
+        {yards.map((yard) => (
+          <YardSlide
+            key={yard.id}
+            yard={yard}
+            onBlockClick={(block, yardName) => { setSelectedBlock(block); setSelectedYardName(yardName); }}
+          />
+        ))}
       </div>
 
       {/* Slot Grid Modal */}

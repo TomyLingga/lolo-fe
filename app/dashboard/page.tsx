@@ -43,14 +43,21 @@ export default function DashboardPage() {
     }
   }, []);
 
-  useEffect(() => {
-    if (hasFetched.current) return;
-    hasFetched.current = true;
-    fetchYardMap();
+  const [time, setTime] = useState(new Date());
 
-    // Auto-refresh every 60s — refetch all, local search still works
-    const timer = setInterval(fetchYardMap, 60_000);
-    return () => clearInterval(timer);
+  useEffect(() => {
+    if (!hasFetched.current) {
+      hasFetched.current = true;
+      fetchYardMap();
+    }
+
+    const fetchTimer = setInterval(fetchYardMap, 60_000);
+    const clockTimer = setInterval(() => setTime(new Date()), 1000);
+
+    return () => {
+      clearInterval(fetchTimer);
+      clearInterval(clockTimer);
+    };
   }, [fetchYardMap]);
 
   // ─── Client-side search filter ────────────────────────────────────────────────
@@ -98,16 +105,16 @@ export default function DashboardPage() {
       sub: "sedang tersimpan di yard",
     },
     {
-      label: "Auto Refresh",
-      value: "60s",
+      label: "Waktu Sistem",
+      value: loading ? "—" : time.toLocaleTimeString("id-ID", { hour: "2-digit", minute: "2-digit", second: "2-digit" }),
       icon: (
         <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5}
-            d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0l3.181 3.183a8.25 8.25 0 0013.803-3.7M4.031 9.865a8.25 8.25 0 0113.803-3.7l3.181 3.182m0-4.991v4.99" />
+            d="M12 6v6h4.5m4.5 0a9 9 0 11-18 0 9 9 0 0118 0z" />
         </svg>
       ),
       accent: "amber",
-      sub: "pembaruan otomatis peta yard",
+      sub: "waktu lokal saat ini (auto-refresh ON)",
     },
   ];
 
