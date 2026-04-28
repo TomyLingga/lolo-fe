@@ -157,6 +157,13 @@ export interface LoloRecord {
   yard?: Yard;
   block?: Block;
   created_at: string;
+  tariff_price?: string;
+  created_by?: {
+    id: number;
+    name: string;
+    jabatan?: string;
+    bagian?: string;
+  };
 }
 
 export interface StorageRecord {
@@ -175,6 +182,13 @@ export interface StorageRecord {
   yard?: Yard;
   block?: Block;
   created_at: string;
+  storage_price_per_day?: string;
+  moved_by?: {
+    id: number;
+    name: string;
+    jabatan?: string;
+    bagian?: string;
+  };
 }
 
 export interface RegistrationRemark {

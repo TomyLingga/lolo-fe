@@ -8,7 +8,7 @@ interface TimelineItem {
   datetime: string;
   badge?: string;
   badgeColor?: "blue" | "green" | "amber" | "slate" | "red";
-  details?: { label: string; value: string }[];
+  details?: { label: string; value: React.ReactNode }[];
 }
 
 export default function Timeline({ items }: { items: TimelineItem[] }) {

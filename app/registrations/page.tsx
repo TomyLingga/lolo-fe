@@ -14,6 +14,7 @@ import { registrationsApi } from "@/lib/api";
 import { getUser } from "@/lib/auth";
 import { formatDateTime, getErrorMessage, cn } from "@/lib/utils";
 import toast from "react-hot-toast";
+import * as XLSX from "xlsx";
 import type { Registration } from "@/types";
 
 type FilterTab = "ALL" | "OPEN" | "CLOSED";
@@ -83,6 +84,91 @@ export default function RegistrationsPage() {
       .some(v => v?.toLowerCase().includes(search.toLowerCase())))
     : data;
 
+  const handleExportExcel = () => {
+    if (filtered.length === 0) {
+      toast.error("Tidak ada data untuk diexport");
+      return;
+    }
+
+    const regData = filtered.map(r => ({
+      "ID": r.id,
+      "No. Container": r.container_number,
+      "Freight Forwarder": (r as any).freight_forwarders?.name || "-",
+      "No. DO/JO": r.no_do_jo || "-",
+      "Ukuran": (r as any).size?.description || "-",
+      "Tipe": (r as any).type?.description || "-",
+      "Shipper/Tenant": r.shipper_tenant || "-",
+      "Status Record": r.record_status,
+      "Tgl Masuk": formatDateTime(r.created_at),
+      "Tgl Keluar": r.closed_at ? formatDateTime(r.closed_at) : "-",
+    }));
+
+    const loloData: any[] = [];
+    const storageData: any[] = [];
+    const remarkData: any[] = [];
+
+    filtered.forEach(r => {
+      const loloRecs = (r as any).lolo_records || [];
+      loloRecs.forEach((l: any) => {
+        loloData.push({
+          "No. Container": r.container_number,
+          "Operasi": l.operation_type === "LIFT_ON" ? "LIFT ON" : "LIFT OFF",
+          "Waktu LOLO": formatDateTime(l.lolo_at),
+          "Kendaraan": `${l.vehicle_type || "-"} / ${l.vehicle_number || "-"}`,
+          "Status Kargo": l.cargo_status?.description || "-",
+          "Tarif": l.tariff_price ? Number(l.tariff_price) : 0,
+          "Operator": l.created_by ? `${l.created_by.name} (${l.created_by.jabatan || "-"})` : "-",
+        });
+      });
+
+      const storageRecs = (r as any).storage_records || [];
+      storageRecs.forEach((s: any) => {
+        storageData.push({
+          "No. Container": r.container_number,
+          "Mulai": s.start_date,
+          "Selesai": s.end_date || "Masih di Storage",
+          "Lokasi": `${s.yard?.name || "-"} / Block ${s.block?.block_code || "-"}`,
+          "Posisi": `L${s.pos_length} W${s.pos_width} H${s.pos_height}`,
+          "Status Kargo": s.cargo_status?.description || "-",
+          "Tarif/Hari": s.storage_price_per_day ? Number(s.storage_price_per_day) : 0,
+          "Operator": s.moved_by ? `${s.moved_by.name} (${s.moved_by.jabatan || "-"})` : "-",
+        });
+      });
+
+      const remarks = (r as any).registration_remarks || [];
+      remarks.forEach((rm: any) => {
+        remarkData.push({
+          "No. Container": r.container_number,
+          "Catatan": rm.remark,
+          "Waktu": formatDateTime(rm.created_at),
+          "Oleh": rm.created_by?.name || rm.created_by || "-",
+        });
+      });
+    });
+
+    const wb = XLSX.utils.book_new();
+    
+    const wsReg = XLSX.utils.json_to_sheet(regData);
+    XLSX.utils.book_append_sheet(wb, wsReg, "Registrasi");
+
+    if (loloData.length > 0) {
+      const wsLolo = XLSX.utils.json_to_sheet(loloData);
+      XLSX.utils.book_append_sheet(wb, wsLolo, "Riwayat LOLO");
+    }
+    
+    if (storageData.length > 0) {
+      const wsStorage = XLSX.utils.json_to_sheet(storageData);
+      XLSX.utils.book_append_sheet(wb, wsStorage, "Riwayat Storage");
+    }
+
+    if (remarkData.length > 0) {
+      const wsRemark = XLSX.utils.json_to_sheet(remarkData);
+      XLSX.utils.book_append_sheet(wb, wsRemark, "Catatan");
+    }
+
+    XLSX.writeFile(wb, `Export_Registrasi_${getLocalDate(new Date())}.xlsx`);
+  };
+
   // Ubah Fungsi handleClose ini
   async function handleClose(e: React.FormEvent) {
     e.preventDefault();
@@ -135,13 +221,22 @@ export default function RegistrationsPage() {
           title="Registrasi"
           subtitle="Manajemen registrasi kontainer"
           actions={
-            <button className="btn-primary btn-sm sm:btn" onClick={() => { setEditReg(null); setFormOpen(true); }}>
-              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-              </svg>
-              <span className="hidden sm:inline">Tambah Registrasi</span>
-              <span className="sm:hidden">Tambah</span>
-            </button>
+            <div className="flex gap-2">
+              <button className="btn-secondary btn-sm sm:btn" onClick={handleExportExcel}>
+                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                </svg>
+                <span className="hidden sm:inline">Export Excel</span>
+                <span className="sm:hidden">Export</span>
+              </button>
+              <button className="btn-primary btn-sm sm:btn" onClick={() => { setEditReg(null); setFormOpen(true); }}>
+                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                </svg>
+                <span className="hidden sm:inline">Tambah Registrasi</span>
+                <span className="sm:hidden">Tambah</span>
+              </button>
+            </div>
           }
         />
 

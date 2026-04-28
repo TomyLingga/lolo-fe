@@ -30,7 +30,7 @@ export default function InvoicesPage() {
   const [data, setData] = useState<Invoice[]>([]);
   const [loading, setLoading] = useState(false);
   const [tab, setTab] = useState<FilterTab>("DRAFT");
-  
+
   // Menerapkan default tanggal
   const [dateFrom, setDateFrom] = useState(getLocalDate(startOfMonth));
   const [dateTo, setDateTo] = useState(getLocalDate(today));
@@ -63,7 +63,7 @@ export default function InvoicesPage() {
       const params: Record<string, string> = {};
       if (tab !== "ALL") params.status = tab;
       if (tab !== "DRAFT" && dateFrom) params.date_from = dateFrom;
-      if (tab !== "DRAFT" && dateTo)   params.date_to   = dateTo;
+      if (tab !== "DRAFT" && dateTo) params.date_to = dateTo;
       const res = await invoicesApi.getAll(params as { date_from?: string; date_to?: string; status?: string });
       // API already filters by status — no client-side re-filter needed
       setData(res.data.data || []);
@@ -92,19 +92,19 @@ export default function InvoicesPage() {
         setFfs(ffsRes.data.data.filter((f: any) => f.is_active));
         setAvailableTaxes(taxesRes.data.data.filter((t: any) => t.is_active));
       })
-      .catch(() => {})
+      .catch(() => { })
       .finally(() => setLoadingFfs(false));
     setCreateForm(p => ({ ...p, invoice_date: getLocalDate(new Date()) }));
   }, [createOpen]);
 
   useEffect(() => {
-    if (!selectedFf) { 
-      setInvoiceableRegs([]); 
+    if (!selectedFf) {
+      setInvoiceableRegs([]);
       setSelectedRegIds([]);
       setSelectedTaxIds([]);
-      return; 
+      return;
     }
-    
+
     setFetchingRegs(true);
     invoicesApi.getInvoiceableRegistrations(Number(selectedFf))
       .then(r => {
@@ -141,7 +141,7 @@ export default function InvoicesPage() {
     try {
       await invoicesApi.pay(selectedInv.id);
       toast.success("Invoice ditandai LUNAS");
-      setPayConfirm(false); 
+      setPayConfirm(false);
       fetchData();
     } catch (err) { toast.error(getErrorMessage(err)); }
     finally { setActionLoading(false); }
@@ -153,7 +153,7 @@ export default function InvoicesPage() {
     try {
       await invoicesApi.deactivate(selectedInv.id);
       toast.success("Invoice dinonaktifkan");
-      setDeactivateConfirm(false); 
+      setDeactivateConfirm(false);
       fetchData();
     } catch (err) { toast.error(getErrorMessage(err)); }
     finally { setActionLoading(false); }
@@ -226,44 +226,45 @@ export default function InvoicesPage() {
                   const total = (inv as any).grand_total || inv.total_amount;
 
                   return (
-                  // MENGUBAH SYARAT OPACITY: Hanya tembus pandang jika API secara eksplisit mereturn is_active: false
-                  <tr key={inv.id} className={cn("table-row", inv.is_active === false && "opacity-40")}>
-                    <td className="px-4 py-3 font-mono font-semibold text-white">{inv.invoice_number || `#${inv.id}`}</td>
-                    <td className="px-4 py-3 text-slate-300">{ffName}</td>
-                    <td className="px-4 py-3 text-slate-400">{formatDate(inv.invoice_date)}</td>
-                    <td className="px-4 py-3">
-                      <span className={cn("badge", inv.status === "PAID" ? "badge-green" : "badge-amber")}>{inv.status}</span>
-                    </td>
-                    <td className="px-4 py-3 text-slate-300">{total ? formatCurrency(Number(total)) : "-"}</td>
-                    <td className="px-4 py-3">
-                      <div className="flex items-center gap-1">
-                        <a href={`${apiUrl}/invoices/${inv.id}/pdf`} target="_blank" rel="noopener noreferrer"
-                          className="btn btn-sm btn-ghost" title="Cetak PDF">
-                          <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
-                          </svg>
-                        </a>
-                        
-                        {inv.status === "DRAFT" && inv.is_active !== false && (
-                          <button onClick={() => { setSelectedInv(inv); setPayConfirm(true); }} className="btn btn-sm btn-success" title="Tandai Lunas">
+                    // MENGUBAH SYARAT OPACITY: Hanya tembus pandang jika API secara eksplisit mereturn is_active: false
+                    <tr key={inv.id} className={cn("table-row", inv.is_active === false && "opacity-40")}>
+                      <td className="px-4 py-3 font-mono font-semibold text-white">{inv.invoice_number || `#${inv.id}`}</td>
+                      <td className="px-4 py-3 text-slate-300">{ffName}</td>
+                      <td className="px-4 py-3 text-slate-400">{formatDate(inv.invoice_date)}</td>
+                      <td className="px-4 py-3">
+                        <span className={cn("badge", inv.status === "PAID" ? "badge-green" : "badge-amber")}>{inv.status}</span>
+                      </td>
+                      <td className="px-4 py-3 text-slate-300">{total ? formatCurrency(Number(total)) : "-"}</td>
+                      <td className="px-4 py-3">
+                        <div className="flex items-center gap-1">
+                          <a href={`${apiUrl}/invoices/${inv.id}/pdf`} target="_blank" rel="noopener noreferrer"
+                            className="btn btn-sm btn-ghost" title="Cetak PDF">
                             <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
                             </svg>
-                          </button>
-                        )}
-                        
-                        {isAdmin && (
-                          <button onClick={() => { setSelectedInv(inv); setDeactivateConfirm(true); }}
-                            className="btn btn-sm btn-ghost text-red-400 hover:text-red-300" title="Nonaktifkan">
-                            <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                            </svg>
-                          </button>
-                        )}
-                      </div>
-                    </td>
-                  </tr>
-                )})}
+                          </a>
+
+                          {inv.status === "DRAFT" && inv.is_active !== false && (
+                            <button onClick={() => { setSelectedInv(inv); setPayConfirm(true); }} className="btn btn-sm btn-success" title="Tandai Lunas">
+                              <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                              </svg>
+                            </button>
+                          )}
+
+                          {isAdmin && (
+                            <button onClick={() => { setSelectedInv(inv); setDeactivateConfirm(true); }}
+                              className="btn btn-sm btn-ghost text-red-400 hover:text-red-300" title="Nonaktifkan">
+                              <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                              </svg>
+                            </button>
+                          )}
+                        </div>
+                      </td>
+                    </tr>
+                  )
+                })}
               </tbody>
             </table>
           </div>
@@ -302,7 +303,7 @@ export default function InvoicesPage() {
             {selectedFf && (
               <div>
                 <label className="label">Pilih Registrasi <span className="text-red-400">*</span></label>
-                
+
                 {fetchingRegs ? (
                   <div className="flex justify-center items-center py-6 text-slate-500 text-sm gap-2">
                     <svg className="animate-spin w-4 h-4" fill="none" viewBox="0 0 24 24">
@@ -342,7 +343,7 @@ export default function InvoicesPage() {
                         <span className="text-sm font-medium text-white">{tax.name}</span>
                         <div className="text-xs text-slate-400 mt-0.5">
                           {tax.value_type === "PERCENTAGE" ? `${tax.value}%` : formatCurrency(Number(tax.value))}
-                          <span className={cn("ml-2 px-1.5 py-0.5 rounded text-[10px]", 
+                          <span className={cn("ml-2 px-1.5 py-0.5 rounded text-[10px]",
                             tax.type === "ADD" ? "bg-red-500/20 text-red-400" : "bg-green-500/20 text-green-400")}>
                             {tax.type === "ADD" ? "Tambah" : "Kurang"}
                           </span>

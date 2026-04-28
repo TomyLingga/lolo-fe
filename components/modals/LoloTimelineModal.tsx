@@ -26,6 +26,25 @@ export default function LoloTimelineModal({ open, onClose, registration }: Props
       ...(r.yard ? [{ label: "Yard", value: r.yard.name }] : []),
       ...(r.block ? [{ label: "Block", value: r.block.block_code }] : []),
       ...(r.pos_length ? [{ label: "Posisi", value: `L${r.pos_length} W${r.pos_width} H${r.pos_height}` }] : []),
+      { 
+        label: "Tarif", 
+        value: r.tariff_price ? (
+          <span className="text-emerald-400 font-medium">Rp {Number(r.tariff_price).toLocaleString('id-ID')}</span>
+        ) : "-" 
+      },
+      { 
+        label: "Operator", 
+        value: r.created_by ? (
+          <div className="flex flex-col gap-0.5 mt-0.5">
+            <span className="text-slate-200 font-medium leading-none">{r.created_by.name}</span>
+            {(r.created_by.jabatan || r.created_by.bagian) && (
+              <span className="text-[10px] text-slate-400 bg-slate-800 border border-slate-700 px-1.5 py-0.5 rounded w-fit mt-1">
+                {r.created_by.jabatan}{r.created_by.jabatan && r.created_by.bagian ? ' • ' : ''}{r.created_by.bagian}
+              </span>
+            )}
+          </div>
+        ) : "-" 
+      },
     ],
   }));
 

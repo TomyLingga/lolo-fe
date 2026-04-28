@@ -35,3 +35,15 @@ export function getErrorMessage(error: unknown): string {
   if (error instanceof Error) return error.message;
   return "Terjadi kesalahan";
 }
+
+/** Returns "YYYY-MM-DD" for the first day of current month */
+export function firstOfMonth(): string {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-01`;
+}
+
+/** Returns "YYYY-MM-DD" for today */
+export function today(): string {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+}

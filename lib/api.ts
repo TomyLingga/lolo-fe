@@ -110,7 +110,7 @@ export const registrationsApi = {
   update: (id: number, data: Partial<Registration>) =>
     api.put<{ data: Registration }>(`/registrations/${id}`, data),
   deactivate: (id: number) => api.delete(`/registrations/${id}`),
-  close: (id: number, data: { remark: string }) => 
+  close: (id: number, data: { remark: string }) =>
     api.post(`/registrations/${id}/close`, data),
 };
 
