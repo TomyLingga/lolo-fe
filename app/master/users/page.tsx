@@ -20,7 +20,7 @@ export default function UsersPage() {
 
   const [formOpen, setFormOpen] = useState(false);
   const [editUser, setEditUser] = useState<User | null>(null);
-  const [form, setForm] = useState({ name: "", email: "", role: "petugas", jabatan: "", bagian: "", password: "", password_confirmation: "" });
+  const [form, setForm] = useState({ name: "", email: "", role: "operator", jabatan: "", bagian: "", password: "", password_confirmation: "" });
   const [saving, setSaving] = useState(false);
 
   const [resetOpen, setResetOpen] = useState(false);
@@ -49,7 +49,7 @@ export default function UsersPage() {
     setEditUser(user || null);
     setForm(user
       ? { name: user.name, email: user.email, role: user.role, jabatan: user.jabatan || "", bagian: user.bagian || "", password: "", password_confirmation: "" }
-      : { name: "", email: "", role: "petugas", jabatan: "", bagian: "", password: "", password_confirmation: "" });
+      : { name: "", email: "", role: "operator", jabatan: "", bagian: "", password: "", password_confirmation: "" });
     setFormOpen(true);
   }
 
@@ -62,9 +62,9 @@ export default function UsersPage() {
     setSaving(true);
     try {
       if (editUser) {
-        await usersApi.update(editUser.id, { name: form.name, email: form.email, role: form.role as "admin" | "petugas", jabatan: form.jabatan, bagian: form.bagian });
+        await usersApi.update(editUser.id, { name: form.name, email: form.email, role: form.role as "admin" | "operator" | "finance", jabatan: form.jabatan, bagian: form.bagian });
       } else {
-        await usersApi.create({ name: form.name, email: form.email, role: form.role as "admin" | "petugas", jabatan: form.jabatan, bagian: form.bagian, password: form.password, password_confirmation: form.password_confirmation });
+        await usersApi.create({ name: form.name, email: form.email, role: form.role as "admin" | "operator" | "finance", jabatan: form.jabatan, bagian: form.bagian, password: form.password, password_confirmation: form.password_confirmation });
       }
       toast.success(editUser ? "User diperbarui" : "User dibuat"); setFormOpen(false); fetchData();
     } catch (err) { toast.error(getErrorMessage(err)); }
@@ -125,7 +125,7 @@ export default function UsersPage() {
                         </td>
                         <td className="px-4 py-3 text-slate-400">{u.email}</td>
                         <td className="px-4 py-3">
-                          <span className={cn("badge", u.role === "admin" ? "badge-blue" : "badge-slate")}>{u.role}</span>
+                          <span className={cn("badge", u.role === "admin" ? "badge-blue" : u.role === "finance" ? "badge-amber" : "badge-slate")}>{u.role}</span>
                         </td>
                         <td className="px-4 py-3 text-slate-400">{u.jabatan || "-"}</td>
                         <td className="px-4 py-3 text-slate-400">{u.bagian || "-"}</td>
@@ -161,7 +161,8 @@ export default function UsersPage() {
               <F label="Email" req><input className="input" type="email" required value={form.email} onChange={e => setForm(p => ({ ...p, email: e.target.value }))} /></F>
               <F label="Role" req>
                 <select className="input" required value={form.role} onChange={e => setForm(p => ({ ...p, role: e.target.value }))}>
-                  <option value="petugas">Petugas</option>
+                  <option value="operator">Operator</option>
+                  <option value="finance">Finance</option>
                   <option value="admin">Admin</option>
                 </select>
               </F>

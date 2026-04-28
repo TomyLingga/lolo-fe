@@ -3,7 +3,7 @@ export interface User {
   id: number;
   name: string;
   email: string;
-  role: "admin" | "petugas";
+  role: "admin" | "operator" | "finance";
   jabatan?: string;
   bagian?: string;
   is_active: boolean;

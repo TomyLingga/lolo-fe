@@ -11,7 +11,7 @@ interface NavItem {
   href?: string;
   label: string;
   icon: React.ReactNode;
-  adminOnly?: boolean;
+  roles?: string[];
   children?: { href: string; label: string }[];
 }
 
@@ -35,22 +35,27 @@ export default function Sidebar({ onClose }: { onClose?: () => void }) {
   const navItems: NavItem[] = [
     {
       href: "/dashboard", label: "Dashboard",
+      roles: ["admin", "operator", "finance"],
       icon: <Icon path="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />,
     },
     {
       href: "/registrations", label: "Registrasi",
+      roles: ["admin", "operator"],
       icon: <Icon path="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />,
     },
     {
       href: "/invoices", label: "Invoice",
+      roles: ["admin", "finance"],
       icon: <Icon path="M9 14l6-6m-5.5.5h.01m4.99 5h.01M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16l3.5-2 3.5 2 3.5-2 3.5 2z" />,
     },
     {
-      href: "/tariffs", label: "Tarif", adminOnly: true,
+      href: "/tariffs", label: "Tarif",
+      roles: ["admin", "finance"],
       icon: <Icon path="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />,
     },
     {
-      label: "Master Data", adminOnly: true,
+      label: "Master Data",
+      roles: ["admin"],
       icon: <Icon path="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z" />,
       children: [
         { href: "/master/users", label: "User" },
@@ -70,7 +75,11 @@ export default function Sidebar({ onClose }: { onClose?: () => void }) {
     router.push("/login");
   }
 
-  const visibleItems = navItems.filter(i => !i.adminOnly || admin);
+  const visibleItems = navItems.filter(i => {
+    if (!i.roles) return true;
+    if (!user) return false;
+    return i.roles.includes(user.role);
+  });
 
   return (
     <div className="flex flex-col h-full" style={{ background: "#111827", borderRight: "1px solid rgba(255,255,255,0.06)" }}>
