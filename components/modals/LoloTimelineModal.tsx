@@ -17,7 +17,6 @@ export default function LoloTimelineModal({ open, onClose, registration }: Props
   const items = records.map(r => ({
     id: r.id,
     title: r.operation_type === "LIFT_ON" ? "LIFT ON — Kontainer Keluar" : "LIFT OFF — Kontainer Masuk",
-    subtitle: r.operator_name,
     datetime: formatDateTime(r.lolo_at),
     badge: r.operation_type,
     badgeColor: (r.operation_type === "LIFT_ON" ? "amber" : "blue") as "amber" | "blue",

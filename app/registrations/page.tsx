@@ -49,7 +49,7 @@ export default function RegistrationsPage() {
   const [selectedReg, setSelectedReg] = useState<Registration | null>(null);
   const [deactivateConfirm, setDeactivateConfirm] = useState(false);
   const [actionLoading, setActionLoading] = useState(false);
-  
+
   // Custom State untuk menutup registrasi
   const [closeConfirm, setCloseConfirm] = useState(false);
   const [closeRemark, setCloseRemark] = useState("");
@@ -64,10 +64,10 @@ export default function RegistrationsPage() {
       else if (tab === "CLOSED") res = await registrationsApi.getClosed({ date_from: dateFrom || undefined, date_to: dateTo || undefined });
       else res = await registrationsApi.getAll({ date_from: dateFrom || undefined, date_to: dateTo || undefined });
       setData(res.data.data || []);
-    } catch { 
-      toast.error("Gagal memuat data"); 
-    } finally { 
-      setLoading(false); 
+    } catch {
+      toast.error("Gagal memuat data");
+    } finally {
+      setLoading(false);
     }
   }
 
@@ -80,7 +80,7 @@ export default function RegistrationsPage() {
 
   const filtered = search
     ? data.filter(r => [r.container_number, (r as any).freight_forwarders?.name, r.no_do_jo, r.shipper_tenant]
-        .some(v => v?.toLowerCase().includes(search.toLowerCase())))
+      .some(v => v?.toLowerCase().includes(search.toLowerCase())))
     : data;
 
   // Ubah Fungsi handleClose ini
@@ -120,10 +120,10 @@ export default function RegistrationsPage() {
   function openLoloTime(reg: Registration) { setSelectedReg(reg); setLoloTimeOpen(true); }
   function openStorageTime(reg: Registration) { setSelectedReg(reg); setStorageTimeOpen(true); }
   function openRemark(reg: Registration, readOnly = false) { setSelectedReg(reg); setRemarkReadOnly(readOnly); setRemarkOpen(true); }
-  function openClose(reg: Registration) { 
-    setSelectedReg(reg); 
+  function openClose(reg: Registration) {
+    setSelectedReg(reg);
     setCloseRemark(""); // Reset isian remark setiap kali modal dibuka
-    setCloseConfirm(true); 
+    setCloseConfirm(true);
   }
   function openDeactivate(reg: Registration) { setSelectedReg(reg); setDeactivateConfirm(true); }
   function openEdit(reg: Registration) { setEditReg(reg); setFormOpen(true); }
@@ -189,8 +189,8 @@ export default function RegistrationsPage() {
                   <tr><td colSpan={8} className="px-4 py-12 text-center text-slate-500">
                     <div className="flex items-center justify-center gap-2">
                       <svg className="animate-spin w-4 h-4" fill="none" viewBox="0 0 24 24">
-                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/>
-                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/>
+                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
                       </svg>
                       Memuat...
                     </div>
@@ -198,8 +198,8 @@ export default function RegistrationsPage() {
                 ) : filtered.length === 0 ? (
                   <tr><td colSpan={8} className="px-4 py-12 text-center text-slate-500">Tidak ada data</td></tr>
                 ) : filtered.map(reg => {
-                  
-                  const loloRecs = (reg as any).loloRecords || [];
+
+                  const loloRecs = (reg as any).lolo_records || [];
                   const actualLastLolo = loloRecs.length > 0 ? loloRecs[loloRecs.length - 1].operation_type : null;
 
                   return (
@@ -209,7 +209,7 @@ export default function RegistrationsPage() {
                         <p className="text-xs text-slate-500">#{reg.id}</p>
                       </td>
                       <td className="px-4 py-3 text-slate-300">
-                        {(reg as any).freight_forwarders?.name || "-"} 
+                        {(reg as any).freight_forwarders?.name || "-"}
                       </td>
                       <td className="px-4 py-3 text-slate-400">{reg.no_do_jo || "-"}</td>
                       <td className="px-4 py-3">
@@ -220,8 +220,13 @@ export default function RegistrationsPage() {
                       <td className="px-4 py-3">
                         <span className={cn("badge", reg.record_status === "OPEN" ? "badge-green" : "badge-slate")}>{reg.record_status}</span>
                         {actualLastLolo && (
-                          <span className={cn("badge ml-1", actualLastLolo === "LIFT_ON" ? "badge-amber" : "badge-blue")}>
-                            {actualLastLolo}
+                          <span
+                            className={cn(
+                              "badge ml-1 w-[40px] text-center",
+                              actualLastLolo === "LIFT_ON" ? "badge-amber" : "badge-blue"
+                            )}
+                          >
+                            {actualLastLolo === "LIFT_ON" ? "ON" : "OFF"}
                           </span>
                         )}
                       </td>
@@ -229,16 +234,19 @@ export default function RegistrationsPage() {
                         {(() => {
                           // activeStorageRecord = single object (new lightweight API)
                           // storageRecords = full array (detail API) — fallback
-                          const sr = (reg as any).active_storage_record
-                            ?? ((reg as any).storage_records?.[0]) ?? null;
+                          const storageRecs = (reg as any).storage_records || [];
+                          const sr = storageRecs.find((s: any) => s.end_date === null)
+                            ?? storageRecs[storageRecs.length - 1]
+                            ?? null;
                           if (!sr) return "-";
-                          return `${sr.yard?.code ?? ""}${sr.block?.block_code ? " - " + sr.block.block_code : ""} L${sr.pos_length} W${sr.pos_width} H${sr.pos_height}`;
+                          return `${sr.yard?.code ?? ""}${sr.block?.block_code ? " - " + sr.block.block_code : ""
+                            }${sr.pos_length ?? 0}${sr.pos_width ?? 0}${sr.pos_height ?? 0}`;
                         })()}
                       </td>
                       <td className="px-4 py-3 text-slate-400 text-xs">{formatDateTime(reg.created_at)}</td>
                       <td className="px-4 py-3">
                         <div className="flex items-center gap-1 flex-wrap">
-                          
+
                           {reg.record_status === "OPEN" && reg.is_active && (
                             <button onClick={() => openLolo(reg)}
                               className={cn("btn btn-sm", actualLastLolo === "LIFT_OFF" ? "btn-warning" : "btn-primary")}
@@ -246,7 +254,7 @@ export default function RegistrationsPage() {
                               {actualLastLolo === "LIFT_OFF" ? "LO" : "LF"}
                             </button>
                           )}
-                          
+
                           {reg.record_status === "OPEN" && reg.is_active && (
                             <button onClick={() => openStorage(reg)} className="btn btn-sm btn-secondary" title="Pindah Container">
                               <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -254,25 +262,25 @@ export default function RegistrationsPage() {
                               </svg>
                             </button>
                           )}
-                          
+
                           <button onClick={() => openLoloTime(reg)} className="btn btn-sm btn-ghost" title="Riwayat LOLO">
                             <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
                             </svg>
                           </button>
-                          
+
                           <button onClick={() => openStorageTime(reg)} className="btn btn-sm btn-ghost" title="Riwayat Storage">
                             <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
                             </svg>
                           </button>
-                          
+
                           <button onClick={() => openRemark(reg, reg.record_status === "CLOSED")} className="btn btn-sm btn-ghost" title="Catatan">
                             <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 8h10M7 12h4m1 8l-4-4H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-3l-4 4z" />
                             </svg>
                           </button>
-                          
+
                           {reg.record_status === "OPEN" && reg.is_active && actualLastLolo === "LIFT_ON" && (
                             <button onClick={() => openClose(reg)} className="btn btn-sm btn-success" title="Tutup Registrasi">
                               <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -280,7 +288,7 @@ export default function RegistrationsPage() {
                               </svg>
                             </button>
                           )}
-                          
+
                           {isAdmin && (
                             <button onClick={() => openEdit(reg)} className="btn btn-sm btn-ghost" title="Edit">
                               <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -288,7 +296,7 @@ export default function RegistrationsPage() {
                               </svg>
                             </button>
                           )}
-                          
+
                           {isAdmin && (
                             <button onClick={() => openDeactivate(reg)}
                               className={cn("btn btn-sm", reg.is_active ? "btn-ghost text-red-400 hover:text-red-300" : "btn-ghost text-emerald-400")}
@@ -329,7 +337,7 @@ export default function RegistrationsPage() {
         <LoloTimelineModal open={loloTimeOpen} onClose={() => setLoloTimeOpen(false)} registration={selectedReg} />
         <StorageTimelineModal open={storageTimeOpen} onClose={() => setStorageTimeOpen(false)} registration={selectedReg} />
         <RemarkModal open={remarkOpen} onClose={() => setRemarkOpen(false)} registration={selectedReg} readOnly={remarkReadOnly} />
-        
+
         {/* CUSTOM MODAL UNTUK TUTUP REGISTRASI */}
         <Modal open={closeConfirm} onClose={() => setCloseConfirm(false)} title="Tutup Registrasi" size="md">
           <form onSubmit={handleClose} className="space-y-4">
@@ -338,13 +346,13 @@ export default function RegistrationsPage() {
             </p>
             <div>
               <label className="label">Catatan Penutupan <span className="text-red-400">*</span></label>
-              <textarea 
-                className="input" 
-                rows={3} 
-                required 
-                value={closeRemark} 
-                onChange={e => setCloseRemark(e.target.value)} 
-                placeholder="Masukkan catatan saat penutupan kontainer..." 
+              <textarea
+                className="input"
+                rows={3}
+                required
+                value={closeRemark}
+                onChange={e => setCloseRemark(e.target.value)}
+                placeholder="Masukkan catatan saat penutupan kontainer..."
               />
             </div>
             <div className="flex justify-end gap-3 pt-4">

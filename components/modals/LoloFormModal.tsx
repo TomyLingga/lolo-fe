@@ -33,7 +33,7 @@ export default function LoloFormModal({ open, onClose, onSaved, registration }: 
   const isLiftOff = opType === "LIFT_OFF";
 
   const [form, setForm] = useState({
-    cargo_status_id: "", vehicle_type: "", vehicle_number: "", operator_name: "", lolo_at: "",
+    cargo_status_id: "", vehicle_type: "", vehicle_number: "", lolo_at: "",
     yard_id: "", block_id: "", pos_length: "", pos_width: "", pos_height: "", moved_at: "", note: "",
   });
 
@@ -50,7 +50,7 @@ export default function LoloFormModal({ open, onClose, onSaved, registration }: 
 
     const now = new Date();
     const local = new Date(now.getTime() - now.getTimezoneOffset() * 60000).toISOString().slice(0, 16);
-    setForm({ cargo_status_id: String(registration?.cargo_status_id || ""), vehicle_type: "", vehicle_number: "", operator_name: "", lolo_at: local, yard_id: "", block_id: "", pos_length: "", pos_width: "", pos_height: "", moved_at: local, note: "" });
+    setForm({ cargo_status_id: String(registration?.cargo_status_id || ""), vehicle_type: "", vehicle_number: "", lolo_at: local, yard_id: "", block_id: "", pos_length: "", pos_width: "", pos_height: "", moved_at: local, note: "" });
   }, [open, registration]);
 
   const filteredBlocks = form.yard_id ? blocks.filter(b => b.yard_id === Number(form.yard_id)) : blocks;
@@ -68,7 +68,6 @@ export default function LoloFormModal({ open, onClose, onSaved, registration }: 
         operation_type: opType,
         vehicle_type: form.vehicle_type,
         vehicle_number: form.vehicle_number,
-        operator_name: form.operator_name,
         lolo_at: form.lolo_at.replace("T", " ") + ":00",
       };
       if (isLiftOff) {
@@ -116,9 +115,6 @@ export default function LoloFormModal({ open, onClose, onSaved, registration }: 
               </FormWrapper>
               <FormWrapper label="No. Kendaraan" req>
                 <input className="input" required value={form.vehicle_number} onChange={set("vehicle_number")} />
-              </FormWrapper>
-              <FormWrapper label="Nama Operator" req>
-                <input className="input" required value={form.operator_name} onChange={set("operator_name")} />
               </FormWrapper>
               <FormWrapper label="Waktu LOLO" req>
                 <input className="input" type="datetime-local" required value={form.lolo_at} onChange={set("lolo_at")} />

@@ -36,7 +36,7 @@ export default function RegistrationFormModal({ open, onClose, onSaved, registra
   const [form, setForm] = useState({
     freight_forwarder_id: "", container_number: "", container_size_id: "",
     container_type_id: "", cargo_status_id: "", no_do_jo: "", shipper_tenant: "",
-    vehicle_type: "", vehicle_number: "", operator_name: "", remark: "",
+    vehicle_type: "", vehicle_number: "", remark: "",
     lolo_at: "", yard_id: "", block_id: "", pos_length: "", pos_width: "", pos_height: "", moved_at: "",
   });
 
@@ -67,13 +67,13 @@ export default function RegistrationFormModal({ open, onClose, onSaved, registra
             cargo_status_id: String(registration.cargo_status_id),
             no_do_jo: registration.no_do_jo || "",
             shipper_tenant: registration.shipper_tenant || "",
-            vehicle_type: "", vehicle_number: "", operator_name: "", remark: "",
+            vehicle_type: "", vehicle_number: "", remark: "",
             lolo_at: "", yard_id: "", block_id: "", pos_length: "", pos_width: "", pos_height: "", moved_at: "",
           });
         } else {
           setForm({
             freight_forwarder_id: "", container_number: "", container_size_id: "", container_type_id: "",
-            cargo_status_id: "", no_do_jo: "", shipper_tenant: "", vehicle_type: "", vehicle_number: "", operator_name: "",
+            cargo_status_id: "", no_do_jo: "", shipper_tenant: "", vehicle_type: "", vehicle_number: "",
             remark: "", lolo_at: "", yard_id: "", block_id: "", pos_length: "", pos_width: "", pos_height: "", moved_at: "",
           });
           setBlocks([]);
@@ -119,7 +119,7 @@ export default function RegistrationFormModal({ open, onClose, onSaved, registra
           cargo_status_id: Number(form.cargo_status_id),
           no_do_jo: form.no_do_jo, shipper_tenant: form.shipper_tenant,
           vehicle_type: form.vehicle_type, vehicle_number: form.vehicle_number,
-          operator_name: form.operator_name, remark: form.remark,
+          remark: form.remark,
           lolo_at: form.lolo_at,
           yard_id: Number(form.yard_id), block_id: Number(form.block_id),
           pos_length: Number(form.pos_length), pos_width: Number(form.pos_width), pos_height: Number(form.pos_height),
@@ -195,9 +195,6 @@ export default function RegistrationFormModal({ open, onClose, onSaved, registra
                   </FormWrapper>
                   <FormWrapper label="No. Kendaraan" req>
                     <input className="input" required value={form.vehicle_number} onChange={set("vehicle_number")} placeholder="BK 1234 AB" />
-                  </FormWrapper>
-                  <FormWrapper label="Nama Operator" req>
-                    <input className="input" required value={form.operator_name} onChange={set("operator_name")} />
                   </FormWrapper>
                   <FormWrapper label="Waktu LOLO" req>
                     <input className="input" type="datetime-local" required value={form.lolo_at} onChange={set("lolo_at")} />
