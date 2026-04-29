@@ -64,6 +64,7 @@ export default function Sidebar({ onClose }: { onClose?: () => void }) {
         { href: "/master/container-sizes", label: "Container Size & Type" },
         { href: "/master/cargo-statuses", label: "Cargo Status" },
         { href: "/master/taxes", label: "Tax & Discount" },
+        { href: "/master/packages", label: "Paket" },
       ],
     },
   ];

@@ -38,6 +38,13 @@ export default function RegistrationsPage() {
   const [dateFrom, setDateFrom] = useState(getLocalDate(startOfMonth));
   const [dateTo, setDateTo] = useState(getLocalDate(today));
   const [search, setSearch] = useState("");
+  const [sortCol, setSortCol] = useState<string>("");
+  const [sortOrd, setSortOrd] = useState<"asc" | "desc">("asc");
+  const [colFilters, setColFilters] = useState({
+    container_number: "",
+    ff: "",
+    no_do_jo: "",
+  });
 
   const [formOpen, setFormOpen] = useState(false);
   const [editReg, setEditReg] = useState<Registration | null>(null);
@@ -83,10 +90,46 @@ export default function RegistrationsPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [tab, dateFrom, dateTo]);
 
-  const filtered = search
+  let filtered = search
     ? data.filter(r => [r.container_number, (r as any).freight_forwarders?.name, r.no_do_jo, r.shipper_tenant]
       .some(v => v?.toLowerCase().includes(search.toLowerCase())))
     : data;
+
+  if (colFilters.container_number) {
+    filtered = filtered.filter(r => r.container_number?.toLowerCase().includes(colFilters.container_number.toLowerCase()));
+  }
+  if (colFilters.ff) {
+    filtered = filtered.filter(r => (r as any).freight_forwarders?.name?.toLowerCase().includes(colFilters.ff.toLowerCase()));
+  }
+  if (colFilters.no_do_jo) {
+    filtered = filtered.filter(r => r.no_do_jo?.toLowerCase().includes(colFilters.no_do_jo.toLowerCase()));
+  }
+
+  if (sortCol) {
+    filtered = [...filtered].sort((a, b) => {
+      let valA = "";
+      let valB = "";
+      if (sortCol === "container_number") { valA = a.container_number || ""; valB = b.container_number || ""; }
+      else if (sortCol === "ff") { valA = (a as any).freight_forwarders?.name || ""; valB = (b as any).freight_forwarders?.name || ""; }
+      else if (sortCol === "no_do_jo") { valA = a.no_do_jo || ""; valB = b.no_do_jo || ""; }
+      else if (sortCol === "size") { valA = (a as any).size?.code || ""; valB = (b as any).size?.code || ""; }
+      else if (sortCol === "type") { valA = (a as any).type?.code || ""; valB = (b as any).type?.code || ""; }
+
+      if (valA < valB) return sortOrd === "asc" ? -1 : 1;
+      if (valA > valB) return sortOrd === "asc" ? 1 : -1;
+      return 0;
+    });
+  }
+
+  const renderSortIcon = (col: string) => {
+    if (sortCol !== col) return <span className="text-slate-600 ml-1">↕</span>;
+    return sortOrd === "asc" ? <span className="text-brand-400 ml-1">↑</span> : <span className="text-brand-400 ml-1">↓</span>;
+  };
+
+  const handleSort = (col: string) => {
+    if (sortCol === col) { setSortOrd(p => (p === "asc" ? "desc" : "asc")); }
+    else { setSortCol(col); setSortOrd("asc"); }
+  };
 
   const handleExportExcel = () => {
     if (filtered.length === 0) {
@@ -97,6 +140,7 @@ export default function RegistrationsPage() {
     const regData = filtered.map(r => ({
       "ID": r.id,
       "No. Container": r.container_number,
+      "Paket": (r as any).package?.code || "-",
       "Freight Forwarder": (r as any).freight_forwarders?.name || "-",
       "No. DO/JO": r.no_do_jo || "-",
       "Ukuran": (r as any).size?.description || "-",
@@ -278,14 +322,47 @@ export default function RegistrationsPage() {
             <table className="w-full text-sm">
               <thead className="bg-slate-800/60">
                 <tr>
-                  {["No. Container", "Freight Forwarder", "No. DO/JO", "Ukuran/Tipe", "Status", "Posisi", "In / Out", "Aksi"].map(h => (
-                    <th key={h} className="px-4 py-3 text-left table-header whitespace-nowrap">{h}</th>
-                  ))}
+                  <th className="px-4 py-3 text-left table-header whitespace-nowrap">Paket</th>
+                  <th className="px-4 py-3 text-left table-header whitespace-nowrap cursor-pointer select-none" onClick={() => handleSort("container_number")}>
+                    No. Container {renderSortIcon("container_number")}
+                  </th>
+                  <th className="px-4 py-3 text-left table-header whitespace-nowrap cursor-pointer select-none" onClick={() => handleSort("ff")}>
+                    Freight Forwarder {renderSortIcon("ff")}
+                  </th>
+                  <th className="px-4 py-3 text-left table-header whitespace-nowrap cursor-pointer select-none" onClick={() => handleSort("no_do_jo")}>
+                    No. DO/JO {renderSortIcon("no_do_jo")}
+                  </th>
+                  <th className="px-4 py-3 text-left table-header whitespace-nowrap">
+                    <span className="cursor-pointer select-none" onClick={() => handleSort("size")}>Ukuran{renderSortIcon("size")}</span>
+                    <span className="mx-1">/</span>
+                    <span className="cursor-pointer select-none" onClick={() => handleSort("type")}>Tipe{renderSortIcon("type")}</span>
+                  </th>
+                  <th className="px-4 py-3 text-left table-header whitespace-nowrap">Status</th>
+                  <th className="px-4 py-3 text-left table-header whitespace-nowrap">Posisi</th>
+                  <th className="px-4 py-3 text-left table-header whitespace-nowrap">In / Out</th>
+                  <th className="px-4 py-3 text-left table-header whitespace-nowrap">Aksi</th>
+                </tr>
+                <tr className="bg-slate-900/40">
+                  <td className="px-2 py-1"></td>
+                  <td className="px-2 py-1">
+                    <input className="input py-1 text-xs w-full bg-slate-800/50 border-slate-700" placeholder="Filter..." value={colFilters.container_number} onChange={e => setColFilters(p => ({...p, container_number: e.target.value}))} />
+                  </td>
+                  <td className="px-2 py-1">
+                    <input className="input py-1 text-xs w-full bg-slate-800/50 border-slate-700" placeholder="Filter..." value={colFilters.ff} onChange={e => setColFilters(p => ({...p, ff: e.target.value}))} />
+                  </td>
+                  <td className="px-2 py-1">
+                    <input className="input py-1 text-xs w-full bg-slate-800/50 border-slate-700" placeholder="Filter..." value={colFilters.no_do_jo} onChange={e => setColFilters(p => ({...p, no_do_jo: e.target.value}))} />
+                  </td>
+                  <td className="px-2 py-1"></td>
+                  <td className="px-2 py-1"></td>
+                  <td className="px-2 py-1"></td>
+                  <td className="px-2 py-1"></td>
+                  <td className="px-2 py-1"></td>
                 </tr>
               </thead>
               <tbody>
                 {loading ? (
-                  <tr><td colSpan={8} className="px-4 py-12 text-center text-slate-500">
+                  <tr><td colSpan={9} className="px-4 py-12 text-center text-slate-500">
                     <div className="flex items-center justify-center gap-2">
                       <svg className="animate-spin w-4 h-4" fill="none" viewBox="0 0 24 24">
                         <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
@@ -295,7 +372,7 @@ export default function RegistrationsPage() {
                     </div>
                   </td></tr>
                 ) : filtered.length === 0 ? (
-                  <tr><td colSpan={8} className="px-4 py-12 text-center text-slate-500">Tidak ada data</td></tr>
+                  <tr><td colSpan={9} className="px-4 py-12 text-center text-slate-500">Tidak ada data</td></tr>
                 ) : filtered.map(reg => {
 
                   const loloRecs = (reg as any).lolo_records || [];
@@ -303,6 +380,9 @@ export default function RegistrationsPage() {
 
                   return (
                     <tr key={reg.id} className={cn("table-row", !reg.is_active && "opacity-40")}>
+                      <td className="px-4 py-3 text-slate-300 font-medium">
+                        {(reg as any).package?.code || "-"}
+                      </td>
                       <td className="px-4 py-3">
                         <p className="font-mono font-semibold text-white">{reg.container_number}</p>
                         <p className="text-xs text-slate-500">#{reg.id}</p>

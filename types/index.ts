@@ -76,6 +76,14 @@ export interface Tax {
   is_active: boolean;
 }
 
+export interface Package {
+  id: number;
+  name: string;
+  code: string;
+  free_time_days: number;
+  is_active: boolean;
+}
+
 // ─── Tariff ──────────────────────────────────────────────────────────────────
 export interface TariffLolo {
   id: number;
@@ -83,6 +91,7 @@ export interface TariffLolo {
   container_size_id: number;
   container_type_id: number;
   cargo_status_id: number;
+  package_id: number;
   price_lift_off: number;
   price_lift_on: number;
   effective_date: string;
@@ -91,6 +100,7 @@ export interface TariffLolo {
   container_size?: ContainerSize;
   container_type?: ContainerType;
   cargo_status?: CargoStatus;
+  package?: Package;
 }
 
 export interface TariffStorage {
@@ -116,6 +126,7 @@ export interface Registration {
   container_size_id: number;
   container_type_id: number;
   cargo_status_id: number;
+  package_id: number;
   no_do_jo?: string;
   shipper_tenant?: string;
   vehicle_type?: string;
@@ -129,6 +140,7 @@ export interface Registration {
   container_size?: ContainerSize;
   container_type?: ContainerType;
   cargo_status?: CargoStatus;
+  package?: Package;
   last_lolo_type?: "LIFT_ON" | "LIFT_OFF";
   current_yard?: Yard;
   current_block?: Block;

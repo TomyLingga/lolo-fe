@@ -2,7 +2,7 @@ import api from "./axios";
 import type {
   AuthResponse, User, Yard, Block, ContainerSize, ContainerType,
   CargoStatus, FreightForwarder, Tax, TariffLolo, TariffStorage,
-  Registration, LoloRecord, StorageRecord, RegistrationRemark, Invoice,
+  Registration, LoloRecord, StorageRecord, RegistrationRemark, Invoice, Package,
 } from "@/types";
 
 // ─── Auth ────────────────────────────────────────────────────────────────────
@@ -77,6 +77,14 @@ export const taxesApi = {
   create: (data: Partial<Tax>) => api.post<{ data: Tax }>("/master/taxes", data),
   update: (id: number, data: Partial<Tax>) => api.put<{ data: Tax }>(`/master/taxes/${id}`, data),
   deactivate: (id: number) => api.delete(`/master/taxes/${id}`),
+};
+
+export const packagesApi = {
+  getAll: () => api.get<{ data: Package[] }>("/master/package"),
+  getById: (id: number) => api.get<{ data: Package }>(`/master/package/${id}`),
+  create: (data: Partial<Package>) => api.post<{ data: Package }>("/master/package", data),
+  update: (id: number, data: Partial<Package>) => api.put<{ data: Package }>(`/master/package/${id}`, data),
+  deactivate: (id: number) => api.delete(`/master/package/${id}`),
 };
 
 // ─── Tariffs ─────────────────────────────────────────────────────────────────

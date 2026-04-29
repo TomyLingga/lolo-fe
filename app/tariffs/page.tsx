@@ -4,10 +4,10 @@ import AppLayout from "@/components/layout/AppLayout";
 import PageHeader from "@/components/ui/PageHeader";
 import Modal from "@/components/ui/Modal";
 import ConfirmDialog from "@/components/ui/ConfirmDialog";
-import { tariffLoloApi, tariffStorageApi, yardsApi, containerSizesApi, containerTypesApi, cargoStatusesApi } from "@/lib/api";
+import { tariffLoloApi, tariffStorageApi, yardsApi, containerSizesApi, containerTypesApi, cargoStatusesApi, packagesApi } from "@/lib/api";
 import { formatDate, formatCurrency, getErrorMessage, cn } from "@/lib/utils";
 import toast from "react-hot-toast";
-import type { TariffLolo, TariffStorage, Yard, ContainerSize, ContainerType, CargoStatus } from "@/types";
+import type { TariffLolo, TariffStorage, Yard, ContainerSize, ContainerType, CargoStatus, Package } from "@/types";
 
 type TabType = "lolo" | "storage";
 
@@ -19,13 +19,16 @@ export default function TariffsPage() {
   const [sizes, setSizes] = useState<ContainerSize[]>([]);
   const [types, setTypes] = useState<ContainerType[]>([]);
   const [statuses, setStatuses] = useState<CargoStatus[]>([]);
+  const [packages, setPackages] = useState<Package[]>([]);
 
   // Lolo tariffs
   const [loloData, setLoloData] = useState<TariffLolo[]>([]);
   const [loloLoading, setLoloLoading] = useState(false);
-  const [loloForm, setLoloForm] = useState({ yard_id: "", container_size_id: "", container_type_id: "", cargo_status_id: "", price_lift_off: "", price_lift_on: "", effective_date: "" });
+  const [loloForm, setLoloForm] = useState({ yard_id: "", package_id: "", container_size_id: "", container_type_id: "", cargo_status_id: "", price_lift_off: "", price_lift_on: "", effective_date: "" });
   const [loloFormOpen, setLoloFormOpen] = useState(false);
   const [editLolo, setEditLolo] = useState<TariffLolo | null>(null);
+  const [loloColFilters, setLoloColFilters] = useState({ yard: "", size: "", type: "", status: "", package: "" });
+  const [storageColFilters, setStorageColFilters] = useState({ yard: "", size: "", type: "", status: "" });
   const [loloSaving, setLoloSaving] = useState(false);
   const [loloDeactivate, setLoloDeactivate] = useState<TariffLolo | null>(null);
 
@@ -40,9 +43,9 @@ export default function TariffsPage() {
   const [deactivateLoading, setDeactivateLoading] = useState(false);
 
   useEffect(() => {
-    Promise.all([yardsApi.getAll(), containerSizesApi.getAll(), containerTypesApi.getAll(), cargoStatusesApi.getAll()])
-      .then(([y, s, t, c]) => {
-        setYards(y.data.data); setSizes(s.data.data); setTypes(t.data.data); setStatuses(c.data.data);
+    Promise.all([yardsApi.getAll(), containerSizesApi.getAll(), containerTypesApi.getAll(), cargoStatusesApi.getAll(), packagesApi.getAll()])
+      .then(([y, s, t, c, p]) => {
+        setYards(y.data.data); setSizes(s.data.data); setTypes(t.data.data); setStatuses(c.data.data); setPackages(p.data.data);
       }).catch(() => {});
   }, []);
 
@@ -74,9 +77,9 @@ export default function TariffsPage() {
   function openLoloForm(t?: TariffLolo) {
     setEditLolo(t || null);
     if (t) {
-      setLoloForm({ yard_id: String(t.yard_id), container_size_id: String(t.container_size_id), container_type_id: String(t.container_type_id), cargo_status_id: String(t.cargo_status_id), price_lift_off: String(t.price_lift_off), price_lift_on: String(t.price_lift_on), effective_date: t.effective_date?.slice(0, 10) || "" });
+      setLoloForm({ yard_id: String(t.yard_id), package_id: String(t.package_id || ""), container_size_id: String(t.container_size_id), container_type_id: String(t.container_type_id), cargo_status_id: String(t.cargo_status_id), price_lift_off: String(t.price_lift_off), price_lift_on: String(t.price_lift_on), effective_date: t.effective_date?.slice(0, 10) || "" });
     } else {
-      setLoloForm({ yard_id: "", container_size_id: "", container_type_id: "", cargo_status_id: "", price_lift_off: "", price_lift_on: "", effective_date: "" });
+      setLoloForm({ yard_id: "", package_id: "", container_size_id: "", container_type_id: "", cargo_status_id: "", price_lift_off: "", price_lift_on: "", effective_date: "" });
     }
     setLoloFormOpen(true);
   }
@@ -94,7 +97,7 @@ export default function TariffsPage() {
   async function saveLolo(e: React.FormEvent) {
     e.preventDefault(); setLoloSaving(true);
     try {
-      const payload = { yard_id: Number(loloForm.yard_id), container_size_id: Number(loloForm.container_size_id), container_type_id: Number(loloForm.container_type_id), cargo_status_id: Number(loloForm.cargo_status_id), price_lift_off: Number(loloForm.price_lift_off), price_lift_on: Number(loloForm.price_lift_on), effective_date: loloForm.effective_date };
+      const payload = { yard_id: Number(loloForm.yard_id), package_id: Number(loloForm.package_id), container_size_id: Number(loloForm.container_size_id), container_type_id: Number(loloForm.container_type_id), cargo_status_id: Number(loloForm.cargo_status_id), price_lift_off: Number(loloForm.price_lift_off), price_lift_on: Number(loloForm.price_lift_on), effective_date: loloForm.effective_date };
       if (editLolo) await tariffLoloApi.update(editLolo.id, payload);
       else await tariffLoloApi.create(payload);
       toast.success("Tarif LOLO disimpan"); setLoloFormOpen(false); fetchLolo();
@@ -173,16 +176,46 @@ export default function TariffsPage() {
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
                 <thead className="bg-slate-800/60">
-                  <tr>{["Yard", "Ukuran", "Tipe", "Cargo Status", "Harga Lift Off", "Harga Lift On", "Eff. Date", "Aksi"].map(h => (
+                  <tr>{["Paket", "Yard", "Ukuran", "Tipe", "Cargo Status", "Harga Lift Off", "Harga Lift On", "Eff. Date", "Aksi"].map(h => (
                     <th key={h} className="px-4 py-3 text-left table-header whitespace-nowrap">{h}</th>
                   ))}</tr>
+                  <tr className="bg-slate-900/40">
+                    <td className="px-2 py-1">
+                      <input className="input py-1 text-xs w-full bg-slate-800/50 border-slate-700" placeholder="Filter..." value={loloColFilters.package} onChange={e => setLoloColFilters(p => ({...p, package: e.target.value}))} />
+                    </td>
+                    <td className="px-2 py-1">
+                      <input className="input py-1 text-xs w-full bg-slate-800/50 border-slate-700" placeholder="Filter..." value={loloColFilters.yard} onChange={e => setLoloColFilters(p => ({...p, yard: e.target.value}))} />
+                    </td>
+                    <td className="px-2 py-1">
+                      <input className="input py-1 text-xs w-full bg-slate-800/50 border-slate-700" placeholder="Filter..." value={loloColFilters.size} onChange={e => setLoloColFilters(p => ({...p, size: e.target.value}))} />
+                    </td>
+                    <td className="px-2 py-1">
+                      <input className="input py-1 text-xs w-full bg-slate-800/50 border-slate-700" placeholder="Filter..." value={loloColFilters.type} onChange={e => setLoloColFilters(p => ({...p, type: e.target.value}))} />
+                    </td>
+                    <td className="px-2 py-1">
+                      <input className="input py-1 text-xs w-full bg-slate-800/50 border-slate-700" placeholder="Filter..." value={loloColFilters.status} onChange={e => setLoloColFilters(p => ({...p, status: e.target.value}))} />
+                    </td>
+                    <td className="px-2 py-1"></td>
+                    <td className="px-2 py-1"></td>
+                    <td className="px-2 py-1"></td>
+                    <td className="px-2 py-1"></td>
+                  </tr>
                 </thead>
                 <tbody>
-                  {loloLoading ? <tr><td colSpan={8} className="px-4 py-10 text-center text-slate-500">Memuat...</td></tr>
-                  : loloData.length === 0 ? <tr><td colSpan={8} className="px-4 py-10 text-center text-slate-500">Tidak ada data</td></tr>
-                  : loloData.map(t => (
-                    <tr key={t.id} className={cn("table-row", !t.is_active && "opacity-40")}>
-                      <td className="px-4 py-3 text-slate-300">{t.yard?.name || "-"}</td>
+                  {loloLoading ? <tr><td colSpan={9} className="px-4 py-10 text-center text-slate-500">Memuat...</td></tr>
+                  : loloData.length === 0 ? <tr><td colSpan={9} className="px-4 py-10 text-center text-slate-500">Tidak ada data</td></tr>
+                  : (() => {
+                      let filtered = loloData;
+                      if (loloColFilters.package) filtered = filtered.filter(t => t.package?.code?.toLowerCase().includes(loloColFilters.package.toLowerCase()));
+                      if (loloColFilters.yard) filtered = filtered.filter(t => t.yard?.name?.toLowerCase().includes(loloColFilters.yard.toLowerCase()));
+                      if (loloColFilters.size) filtered = filtered.filter(t => t.container_size?.code?.toLowerCase().includes(loloColFilters.size.toLowerCase()));
+                      if (loloColFilters.type) filtered = filtered.filter(t => t.container_type?.code?.toLowerCase().includes(loloColFilters.type.toLowerCase()));
+                      if (loloColFilters.status) filtered = filtered.filter(t => t.cargo_status?.code?.toLowerCase().includes(loloColFilters.status.toLowerCase()));
+                      
+                      return filtered.map(t => (
+                        <tr key={t.id} className={cn("table-row", !t.is_active && "opacity-40")}>
+                          <td className="px-4 py-3 text-slate-300 font-medium">{t.package?.code || "-"}</td>
+                          <td className="px-4 py-3 text-slate-300">{t.yard?.name || "-"}</td>
                       <td className="px-4 py-3 text-slate-300">{t.container_size?.code || "-"}</td>
                       <td className="px-4 py-3 text-slate-300">{t.container_type?.code || "-"}</td>
                       <td className="px-4 py-3 text-slate-300">{t.cargo_status?.code || "-"}</td>
@@ -198,7 +231,8 @@ export default function TariffsPage() {
                         </button>
                       </div></td>
                     </tr>
-                  ))}
+                  ));
+                })()}
                 </tbody>
               </table>
             </div>
@@ -218,13 +252,37 @@ export default function TariffsPage() {
                   <tr>{["Yard", "Ukuran", "Tipe", "Cargo Status", "Harga/Hari", "Eff. Date", "Aksi"].map(h => (
                     <th key={h} className="px-4 py-3 text-left table-header whitespace-nowrap">{h}</th>
                   ))}</tr>
+                  <tr className="bg-slate-900/40">
+                    <td className="px-2 py-1">
+                      <input className="input py-1 text-xs w-full bg-slate-800/50 border-slate-700" placeholder="Filter..." value={storageColFilters.yard} onChange={e => setStorageColFilters(p => ({...p, yard: e.target.value}))} />
+                    </td>
+                    <td className="px-2 py-1">
+                      <input className="input py-1 text-xs w-full bg-slate-800/50 border-slate-700" placeholder="Filter..." value={storageColFilters.size} onChange={e => setStorageColFilters(p => ({...p, size: e.target.value}))} />
+                    </td>
+                    <td className="px-2 py-1">
+                      <input className="input py-1 text-xs w-full bg-slate-800/50 border-slate-700" placeholder="Filter..." value={storageColFilters.type} onChange={e => setStorageColFilters(p => ({...p, type: e.target.value}))} />
+                    </td>
+                    <td className="px-2 py-1">
+                      <input className="input py-1 text-xs w-full bg-slate-800/50 border-slate-700" placeholder="Filter..." value={storageColFilters.status} onChange={e => setStorageColFilters(p => ({...p, status: e.target.value}))} />
+                    </td>
+                    <td className="px-2 py-1"></td>
+                    <td className="px-2 py-1"></td>
+                    <td className="px-2 py-1"></td>
+                  </tr>
                 </thead>
                 <tbody>
                   {storageLoading ? <tr><td colSpan={7} className="px-4 py-10 text-center text-slate-500">Memuat...</td></tr>
                   : storageData.length === 0 ? <tr><td colSpan={7} className="px-4 py-10 text-center text-slate-500">Tidak ada data</td></tr>
-                  : storageData.map(t => (
-                    <tr key={t.id} className={cn("table-row", !t.is_active && "opacity-40")}>
-                      <td className="px-4 py-3 text-slate-300">{t.yard?.name || "-"}</td>
+                  : (() => {
+                      let filtered = storageData;
+                      if (storageColFilters.yard) filtered = filtered.filter(t => t.yard?.name?.toLowerCase().includes(storageColFilters.yard.toLowerCase()));
+                      if (storageColFilters.size) filtered = filtered.filter(t => t.container_size?.code?.toLowerCase().includes(storageColFilters.size.toLowerCase()));
+                      if (storageColFilters.type) filtered = filtered.filter(t => t.container_type?.code?.toLowerCase().includes(storageColFilters.type.toLowerCase()));
+                      if (storageColFilters.status) filtered = filtered.filter(t => t.cargo_status?.code?.toLowerCase().includes(storageColFilters.status.toLowerCase()));
+                      
+                      return filtered.map(t => (
+                        <tr key={t.id} className={cn("table-row", !t.is_active && "opacity-40")}>
+                          <td className="px-4 py-3 text-slate-300">{t.yard?.name || "-"}</td>
                       <td className="px-4 py-3 text-slate-300">{t.container_size?.code || "-"}</td>
                       <td className="px-4 py-3 text-slate-300">{t.container_type?.code || "-"}</td>
                       <td className="px-4 py-3 text-slate-300">{t.cargo_status?.code || "-"}</td>
@@ -239,7 +297,8 @@ export default function TariffsPage() {
                         </button>
                       </div></td>
                     </tr>
-                  ))}
+                  ));
+                })()}
                 </tbody>
               </table>
             </div>
@@ -251,6 +310,10 @@ export default function TariffsPage() {
           <form onSubmit={saveLolo} className="space-y-4">
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <MasterSelects form={loloForm} setForm={f => setLoloForm(f as typeof loloForm)} />
+              <div><label className="label">Paket <span className="text-red-400">*</span></label>
+                <select className="input" required value={loloForm.package_id} onChange={e => setLoloForm(p => ({ ...p, package_id: e.target.value }))}>
+                  <option value="">-- Pilih --</option>{packages.map(p => <option key={p.id} value={p.id}>{p.code} - {p.name}</option>)}
+                </select></div>
               <div><label className="label">Harga Lift Off (Rp) <span className="text-red-400">*</span></label>
                 <input className="input" type="number" required min={0} value={loloForm.price_lift_off} onChange={e => setLoloForm(p => ({ ...p, price_lift_off: e.target.value }))} /></div>
               <div><label className="label">Harga Lift On (Rp) <span className="text-red-400">*</span></label>

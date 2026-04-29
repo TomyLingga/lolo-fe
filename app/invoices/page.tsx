@@ -35,6 +35,12 @@ export default function InvoicesPage() {
   const [dateFrom, setDateFrom] = useState(getLocalDate(startOfMonth));
   const [dateTo, setDateTo] = useState(getLocalDate(today));
   const [search, setSearch] = useState("");
+  const [colFilters, setColFilters] = useState({
+    invoice_number: "",
+    ff: "",
+    date: "",
+    status: "",
+  });
 
   const fetchTimeout = useRef<NodeJS.Timeout | null>(null);
 
@@ -125,9 +131,25 @@ export default function InvoicesPage() {
       .finally(() => setFetchingRegs(false));
   }, [selectedFf]);
 
-  const filtered = search
+  let filtered = search
     ? data.filter(i => [i.invoice_number, i.freight_forwarder?.name, (i as any).freight_forwarders?.name].some(v => v?.toLowerCase().includes(search.toLowerCase())))
     : data;
+
+  if (colFilters.invoice_number) {
+    filtered = filtered.filter(i => (i.invoice_number || `#${i.id}`).toLowerCase().includes(colFilters.invoice_number.toLowerCase()));
+  }
+  if (colFilters.ff) {
+    filtered = filtered.filter(i => {
+      const ffName = i.freight_forwarder?.name || (i as any).freight_forwarders?.name || "";
+      return ffName.toLowerCase().includes(colFilters.ff.toLowerCase());
+    });
+  }
+  if (colFilters.date) {
+    filtered = filtered.filter(i => formatDate(i.invoice_date).toLowerCase().includes(colFilters.date.toLowerCase()));
+  }
+  if (colFilters.status) {
+    filtered = filtered.filter(i => i.status?.toLowerCase().includes(colFilters.status.toLowerCase()));
+  }
 
   async function handleCreate(e: React.FormEvent) {
     e.preventDefault();
@@ -212,6 +234,22 @@ export default function InvoicesPage() {
                   {["No. Invoice", "Freight Forwarder", "Tanggal", "Status", "Total", "Aksi"].map(h => (
                     <th key={h} className="px-4 py-3 text-left table-header whitespace-nowrap">{h}</th>
                   ))}
+                </tr>
+                <tr className="bg-slate-900/40">
+                  <td className="px-2 py-1">
+                    <input className="input py-1 text-xs w-full bg-slate-800/50 border-slate-700" placeholder="Filter..." value={colFilters.invoice_number} onChange={e => setColFilters(p => ({...p, invoice_number: e.target.value}))} />
+                  </td>
+                  <td className="px-2 py-1">
+                    <input className="input py-1 text-xs w-full bg-slate-800/50 border-slate-700" placeholder="Filter..." value={colFilters.ff} onChange={e => setColFilters(p => ({...p, ff: e.target.value}))} />
+                  </td>
+                  <td className="px-2 py-1">
+                    <input className="input py-1 text-xs w-full bg-slate-800/50 border-slate-700" placeholder="Filter..." value={colFilters.date} onChange={e => setColFilters(p => ({...p, date: e.target.value}))} />
+                  </td>
+                  <td className="px-2 py-1">
+                    <input className="input py-1 text-xs w-full bg-slate-800/50 border-slate-700" placeholder="Filter..." value={colFilters.status} onChange={e => setColFilters(p => ({...p, status: e.target.value}))} />
+                  </td>
+                  <td className="px-2 py-1"></td>
+                  <td className="px-2 py-1"></td>
                 </tr>
               </thead>
               <tbody>

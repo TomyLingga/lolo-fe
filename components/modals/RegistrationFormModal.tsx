@@ -1,10 +1,10 @@
 "use client";
 import { useState, useEffect } from "react";
 import Modal from "@/components/ui/Modal";
-import { registrationsApi, yardsApi, blocksApi, freightForwardersApi, containerSizesApi, containerTypesApi, cargoStatusesApi } from "@/lib/api";
+import { registrationsApi, yardsApi, blocksApi, freightForwardersApi, containerSizesApi, containerTypesApi, cargoStatusesApi, packagesApi } from "@/lib/api";
 import { getErrorMessage } from "@/lib/utils";
 import toast from "react-hot-toast";
-import type { Registration, Yard, Block, FreightForwarder, ContainerSize, ContainerType, CargoStatus } from "@/types";
+import type { Registration, Yard, Block, FreightForwarder, ContainerSize, ContainerType, CargoStatus, Package } from "@/types";
 
 interface Props {
   open: boolean;
@@ -32,9 +32,10 @@ export default function RegistrationFormModal({ open, onClose, onSaved, registra
   const [sizes, setSizes] = useState<ContainerSize[]>([]);
   const [types, setTypes] = useState<ContainerType[]>([]);
   const [statuses, setStatuses] = useState<CargoStatus[]>([]);
+  const [packages, setPackages] = useState<Package[]>([]);
 
   const [form, setForm] = useState({
-    freight_forwarder_id: "", container_number: "", container_size_id: "",
+    freight_forwarder_id: "", package_id: "", container_number: "", container_size_id: "",
     container_type_id: "", cargo_status_id: "", no_do_jo: "", shipper_tenant: "",
     vehicle_type: "", vehicle_number: "", remark: "",
     lolo_at: "", yard_id: "", block_id: "", pos_length: "", pos_width: "", pos_height: "", moved_at: "",
@@ -50,17 +51,20 @@ export default function RegistrationFormModal({ open, onClose, onSaved, registra
       containerSizesApi.getAll(),
       containerTypesApi.getAll(),
       cargoStatusesApi.getAll(),
-    ]).then(([y, f, s, t, c]) => {
+      packagesApi.getAll(),
+    ]).then(([y, f, s, t, c, p]) => {
         setYards(y.data.data.filter((x: any) => x.is_active));
         setFfs(f.data.data.filter((x: any) => x.is_active));
         setSizes(s.data.data.filter((x: any) => x.is_active));
         setTypes(t.data.data.filter((x: any) => x.is_active));
         setStatuses(c.data.data.filter((x: any) => x.is_active));
+        setPackages(p.data.data.filter((x: any) => x.is_active));
 
         // Set form after options are loaded
         if (editing && registration) {
           setForm({
             freight_forwarder_id: String(registration.freight_forwarder_id),
+            package_id: String((registration as any).package_id || ""),
             container_number: registration.container_number,
             container_size_id: String(registration.container_size_id),
             container_type_id: String(registration.container_type_id),
@@ -72,7 +76,7 @@ export default function RegistrationFormModal({ open, onClose, onSaved, registra
           });
         } else {
           setForm({
-            freight_forwarder_id: "", container_number: "", container_size_id: "", container_type_id: "",
+            freight_forwarder_id: "", package_id: "", container_number: "", container_size_id: "", container_type_id: "",
             cargo_status_id: "", no_do_jo: "", shipper_tenant: "", vehicle_type: "", vehicle_number: "",
             remark: "", lolo_at: "", yard_id: "", block_id: "", pos_length: "", pos_width: "", pos_height: "", moved_at: "",
           });
@@ -113,6 +117,7 @@ export default function RegistrationFormModal({ open, onClose, onSaved, registra
       } else {
         await registrationsApi.create({
           freight_forwarder_id: Number(form.freight_forwarder_id),
+          package_id: Number(form.package_id),
           container_number: form.container_number,
           container_size_id: Number(form.container_size_id),
           container_type_id: Number(form.container_type_id),
@@ -152,6 +157,12 @@ export default function RegistrationFormModal({ open, onClose, onSaved, registra
                 <select className="input" required value={form.freight_forwarder_id} onChange={set("freight_forwarder_id")} disabled={editing}>
                   <option value="">-- Pilih FF --</option>
                   {ffs.map(f => <option key={f.id} value={f.id}>{f.name}</option>)}
+                </select>
+              </FormWrapper>
+              <FormWrapper label="Paket" req>
+                <select className="input" required value={form.package_id} onChange={set("package_id")} disabled={editing}>
+                  <option value="">-- Pilih Paket --</option>
+                  {packages.map(p => <option key={p.id} value={p.id}>{p.code} - {p.name}</option>)}
                 </select>
               </FormWrapper>
               <FormWrapper label="No. Container" req>
