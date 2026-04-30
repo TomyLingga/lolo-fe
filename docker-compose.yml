@@ -1,12 +1,8 @@
 version: '3.8'
 services:
-  it-inv:
+  lolo-frontend:
     build: .
+    container_name: lolo-fe-app
     ports:
-      - "8089:8089"    # keduanya 8084
-    restart: always
-    environment:
-      - NODE_ENV=production
-      - PORT=8089
-    volumes:
-      - ./.env.local:/app/.env.local
+      - "8089:80"
+    restart: unless-stopped
