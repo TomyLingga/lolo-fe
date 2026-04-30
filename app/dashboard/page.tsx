@@ -5,6 +5,7 @@ import AppLayout from "@/components/layout/AppLayout";
 import { getUser } from "@/lib/auth";
 import { dashboardApi, YardMapYard } from "@/lib/api";
 import dynamic from "next/dynamic";
+import Slideshow from "@/components/ui/Slideshow";
 
 const YardMap = dynamic(() => import("@/components/dashboard/YardMap"), { ssr: false });
 
@@ -13,9 +14,9 @@ export default function DashboardPage() {
 
   // ─── Master data — fetched ONCE ─────────────────────────────────────────────
   const [allYards, setAllYards] = useState<YardMapYard[]>([]);
-  const [loading, setLoading]   = useState(true);
-  const [error, setError]       = useState<string | null>(null);
-  const hasFetched               = useRef(false);   // prevent StrictMode double-fire
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const hasFetched = useRef(false);   // prevent StrictMode double-fire
 
   // ─── Local search — NO API re-call on search ─────────────────────────────────
   const [searchInput, setSearchInput] = useState("");
@@ -63,21 +64,21 @@ export default function DashboardPage() {
   // ─── Client-side search filter ────────────────────────────────────────────────
   const yards: YardMapYard[] = searchQuery
     ? allYards.map(yard => ({
-        ...yard,
-        blocks: yard.blocks.map(block => ({
-          ...block,
-          is_highlighted: block.registrations.some(r =>
-            r.container_number.includes(searchQuery)
-          ),
-        })),
-      })).filter(yard =>
-        yard.blocks.some(b => b.is_highlighted || b.occupied_count > 0)
-      )
+      ...yard,
+      blocks: yard.blocks.map(block => ({
+        ...block,
+        is_highlighted: block.registrations.some(r =>
+          r.container_number.includes(searchQuery)
+        ),
+      })),
+    })).filter(yard =>
+      yard.blocks.some(b => b.is_highlighted || b.occupied_count > 0)
+    )
     : allYards;
 
   // ─── Stats derived from allYards ─────────────────────────────────────────────
   const totalActive = allYards.reduce((s, y) => s + y.total_occupied, 0);
-  const totalYards  = allYards.length;
+  const totalYards = allYards.length;
 
   const statCards = [
     {
@@ -119,35 +120,60 @@ export default function DashboardPage() {
   ];
 
   const accentMap: Record<string, string> = {
-    indigo:  "bg-indigo-500/10 text-indigo-400 ring-indigo-500/20",
+    indigo: "bg-indigo-500/10 text-indigo-400 ring-indigo-500/20",
     emerald: "bg-emerald-500/10 text-emerald-400 ring-emerald-500/20",
-    amber:   "bg-amber-500/10 text-amber-400 ring-amber-500/20",
+    amber: "bg-amber-500/10 text-amber-400 ring-amber-500/20",
   };
 
   return (
     <AppLayout>
       <div className="p-6 space-y-6">
         {/* Welcome */}
-        <div>
-          <h1 className="text-2xl font-bold text-white tracking-tight">
-            Selamat datang{user ? `, ${user.name}` : ""}!
-          </h1>
-          <p className="text-slate-500 mt-1 text-sm">
-            Sistem Manajemen Kontainer — peta yard diperbarui otomatis setiap 60 detik
-          </p>
+        <div className="flex flex-col md:flex-row md:items-end justify-between gap-4">
+          <div className="flex items-center gap-4">
+            <h1 className="text-2xl font-bold text-white tracking-tight flex items-center gap-2">
+              <svg className="w-8 h-8 text-brand-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 17V7m0 10a2 2 0 01-2 2H5a2 2 0 01-2-2V7a2 2 0 012-2h2a2 2 0 012 2m0 10a2 2 0 002 2h2a2 2 0 002-2M9 7a2 2 0 012-2h2a2 2 0 012 2m0 10V7m0 10a2 2 0 002 2h2a2 2 0 002-2V7a2 2 0 00-2-2h-2a2 2 0 00-2 2" /></svg>
+              Container Yard Monitor
+            </h1>
+          </div>
+          <div className="text-right">
+            <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Active Session</p>
+            <p className="text-sm text-brand-400 font-semibold">{user?.name}</p>
+          </div>
         </div>
+
+        {/* Hero Slideshow */}
+        <Slideshow
+          images={["/images/photo1.jpg", "/images/photo2.jpg", "/images/photo3.jpg"]}
+          title="Sei Mangkei Dry Port"
+          subtitle="Operational View"
+          className="h-80 md:h-64 rounded-2xl border border-slate-800 shadow-2xl"
+        />
 
         {/* Stats */}
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
           {statCards.map((card) => (
-            <div key={card.label} className="card p-5 flex items-start gap-4">
-              <div className={`w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 ring-4 ${accentMap[card.accent]}`}>
+            <div key={card.label} className="card p-5 flex items-start gap-4 group hover:border-brand-500/50 transition-colors">
+              <div className={`w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 ring-4 transition-transform group-hover:scale-110 ${accentMap[card.accent]}`}>
                 {card.icon}
               </div>
-              <div className="min-w-0">
-                <p className="text-[11px] font-semibold text-slate-500 uppercase tracking-widest">{card.label}</p>
-                <p className="text-3xl font-bold text-white leading-none mt-1">{card.value}</p>
-                <p className="text-xs text-slate-600 mt-1 truncate">{card.sub}</p>
+              <div className="min-w-0 flex-1">
+                <p className="text-[10px] font-bold text-slate-500 uppercase tracking-[0.2em]">{card.label}</p>
+                {card.accent === "amber" ? (
+                  <div className="mt-1">
+                    <p className="text-3xl font-black text-white tracking-tighter drop-shadow-[0_0_8px_rgba(255,255,255,0.3)]">
+                      {time.toLocaleTimeString("id-ID", { hour: "2-digit", minute: "2-digit", second: "2-digit" })}
+                    </p>
+                    <p className="text-[11px] font-medium text-amber-500/80 uppercase tracking-widest mt-1">
+                      {time.toLocaleDateString("id-ID", { weekday: 'long', day: '2-digit', month: 'long', year: 'numeric' })}
+                    </p>
+                  </div>
+                ) : (
+                  <>
+                    <p className="text-3xl font-bold text-white leading-none mt-1 tracking-tight">{card.value}</p>
+                    <p className="text-[10px] text-slate-500 mt-2 truncate font-medium">{card.sub}</p>
+                  </>
+                )}
               </div>
             </div>
           ))}

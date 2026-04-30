@@ -3,6 +3,8 @@ import type {
   AuthResponse, User, Yard, Block, ContainerSize, ContainerType,
   CargoStatus, FreightForwarder, Tax, TariffLolo, TariffStorage,
   Registration, LoloRecord, StorageRecord, RegistrationRemark, Invoice, Package,
+  Warehouse, WarehouseChamber, WarehouseTariff, WarehouseRegistration,
+  WarehouseRegistrationRemark, WarehouseBeritaAcara, WarehouseInvoice
 } from "@/types";
 
 // ─── Auth ────────────────────────────────────────────────────────────────────
@@ -208,5 +210,90 @@ export const dashboardApi = {
     api.get<{ data: YardMapYard[] }>("/dashboard/yard-map", {
       params: container_number ? { container_number } : undefined,
     }),
+  getWarehouseMap: () =>
+    api.get<{ data: any[] }>("/dashboard/warehouse-map"),
+};
+
+// ─── Warehouse Master ────────────────────────────────────────────────────────
+export const warehousesApi = {
+  getAll: () => api.get<{ data: Warehouse[] }>("/master/warehouses"),
+  getById: (id: number) => api.get<{ data: Warehouse }>(`/master/warehouses/${id}`),
+  create: (data: Partial<Warehouse>) => api.post<{ data: Warehouse }>("/master/warehouses", data),
+  update: (id: number, data: Partial<Warehouse>) => api.put<{ data: Warehouse }>(`/master/warehouses/${id}`, data),
+  deactivate: (id: number) => api.delete(`/master/warehouses/${id}`),
+};
+
+export const warehouseChambersApi = {
+  getAll: () => api.get<{ data: WarehouseChamber[] }>("/master/warehouse-chambers"),
+  getById: (id: number) => api.get<{ data: WarehouseChamber }>(`/master/warehouse-chambers/${id}`),
+  create: (data: Partial<WarehouseChamber>) => api.post<{ data: WarehouseChamber }>("/master/warehouse-chambers", data),
+  update: (id: number, data: Partial<WarehouseChamber>) => api.put<{ data: WarehouseChamber }>(`/master/warehouse-chambers/${id}`, data),
+  deactivate: (id: number) => api.delete(`/master/warehouse-chambers/${id}`),
+};
+
+// ─── Warehouse Tariff ────────────────────────────────────────────────────────
+export const warehouseTariffsApi = {
+  getAll: () => api.get<{ data: WarehouseTariff[] }>("/tariffs/warehouse"),
+  getById: (id: number) => api.get<{ data: WarehouseTariff }>(`/tariffs/warehouse/${id}`),
+  create: (data: Partial<WarehouseTariff>) => api.post<{ data: WarehouseTariff }>("/tariffs/warehouse", data),
+  update: (id: number, data: Partial<WarehouseTariff>) => api.put<{ data: WarehouseTariff }>(`/tariffs/warehouse/${id}`, data),
+  deactivate: (id: number) => api.delete(`/tariffs/warehouse/${id}`),
+  getActive: (warehouseId: number, date: string) =>
+    api.post<{ data: WarehouseTariff }>("/tariffs/warehouse/active", { warehouse_id: warehouseId, date }),
+};
+
+// ─── Warehouse Registration (Rent) ───────────────────────────────────────────
+export const warehouseRegistrationsApi = {
+  getAll: (params?: { date_from?: string; date_to?: string }) =>
+    api.get<{ data: WarehouseRegistration[] }>("/warehouse-registrations", { params }),
+  getActive: () => api.get<{ data: WarehouseRegistration[] }>("/warehouse-registrations/active"),
+  getClosed: (params?: { date_from?: string; date_to?: string }) =>
+    api.get<{ data: WarehouseRegistration[] }>("/warehouse-registrations/closed", { params }),
+  getNotInvoiced: () => api.get<{ data: WarehouseRegistration[] }>("/warehouse-registrations/not-invoiced"),
+  getById: (id: number) => api.get<{ data: WarehouseRegistration }>(`/warehouse-registrations/${id}`),
+  create: (data: Partial<WarehouseRegistration>) =>
+    api.post<{ data: WarehouseRegistration }>("/warehouse-registrations", data),
+  update: (id: number, data: Partial<WarehouseRegistration>) =>
+    api.put<{ data: WarehouseRegistration }>(`/warehouse-registrations/${id}`, data),
+  close: (id: number, data: { rent_end: string; remark?: string }) =>
+    api.post<{ data: WarehouseRegistration }>(`/warehouse-registrations/${id}/close`, data),
+  getRemarks: (id: number) =>
+    api.get<{ data: WarehouseRegistrationRemark[] }>(`/warehouse-registrations/${id}/remarks`),
+  addRemark: (id: number, remark: string) =>
+    api.post<{ data: WarehouseRegistrationRemark }>(`/warehouse-registrations/${id}/remarks`, { remark }),
+  getAvailableChambers: (params: { warehouse_id: number; rent_start: string; rent_end: string }) =>
+    api.get<{ data: WarehouseChamber[] }>("/warehouses/available-chambers", { params }),
+};
+
+// ─── Warehouse Berita Acara ──────────────────────────────────────────────────
+export const warehouseBeritaAcarasApi = {
+  getAll: (params?: { date_from?: string; date_to?: string; warehouse_id?: number }) =>
+    api.get<{ data: WarehouseBeritaAcara[] }>("/warehouse-berita-acaras", { params }),
+  getById: (id: number) => api.get<{ data: WarehouseBeritaAcara }>(`/warehouse-berita-acaras/${id}`),
+  create: (data: any) => api.post<{ data: WarehouseBeritaAcara }>("/warehouse-berita-acaras", data),
+  update: (id: number, data: any) => api.put<{ data: WarehouseBeritaAcara }>(`/warehouse-berita-acaras/${id}`, data),
+  deactivate: (id: number) => api.delete(`/warehouse-berita-acaras/${id}`),
+  addFee: (baId: number, data: { fee_name: string; fee_amount: number; note?: string }) =>
+    api.post(`/warehouse-berita-acaras/${baId}/additional-fees`, data),
+  removeFee: (baId: number, feeId: number) =>
+    api.delete(`/warehouse-berita-acaras/${baId}/additional-fees/${feeId}`),
+  getInvoiceableRegistrations: (ffId: number) =>
+    api.get<{ data: WarehouseRegistration[] }>(`/freight-forwarders/${ffId}/warehouse-registrations/invoiceable-ba`),
+  getPdfUrl: (id: number) =>
+    `${process.env.NEXT_PUBLIC_API_URL}/warehouse-berita-acaras/${id}/pdf`,
+};
+
+// ─── Warehouse Invoices ──────────────────────────────────────────────────────
+export const warehouseInvoicesApi = {
+  getAll: (params?: { date_from?: string; date_to?: string; status?: string }) =>
+    api.get<{ data: WarehouseInvoice[] }>("/warehouse-invoices", { params }),
+  getById: (id: number) => api.get<{ data: WarehouseInvoice }>(`/warehouse-invoices/${id}`),
+  create: (data: any) => api.post<{ data: WarehouseInvoice }>("/warehouse-invoices", data),
+  pay: (id: number) => api.get(`/warehouse-invoices/${id}/pay`),
+  deactivate: (id: number) => api.delete(`/warehouse-invoices/${id}`),
+  getInvoiceableBas: (ffId: number) =>
+    api.get<{ data: WarehouseBeritaAcara[] }>(`/freight-forwarders/${ffId}/warehouse-berita-acaras/invoiceable`),
+  getPdfUrl: (id: number) =>
+    `${process.env.NEXT_PUBLIC_API_URL}/warehouse-invoices/${id}/pdf`,
 };
 

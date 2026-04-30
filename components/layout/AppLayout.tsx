@@ -2,26 +2,36 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { getToken } from "@/lib/auth";
+import { cn } from "@/lib/utils";
 import Sidebar from "./Sidebar";
 
 export default function AppLayout({ children }: { children: React.ReactNode }) {
   const router = useRouter();
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [collapsed, setCollapsed] = useState(false);
   const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
     setMounted(true);
     if (!getToken()) router.push("/login");
+    const saved = localStorage.getItem("sidebar-collapsed");
+    if (saved === "true") setCollapsed(true);
   }, [router]);
+
+  const toggleCollapse = () => {
+    const newVal = !collapsed;
+    setCollapsed(newVal);
+    localStorage.setItem("sidebar-collapsed", String(newVal));
+  };
 
   if (!mounted) return null;
 
   return (
     <div className="flex h-screen overflow-hidden bg-slate-950">
       {/* Desktop sidebar */}
-      <div className="hidden lg:flex lg:flex-shrink-0" style={{ width: 260 }}>
+      <div className={cn("hidden lg:flex lg:flex-shrink-0 transition-all duration-300 ease-in-out", collapsed ? "w-20" : "w-[260px]")}>
         <div className="w-full">
-          <Sidebar />
+          <Sidebar collapsed={collapsed} onToggleCollapse={toggleCollapse} />
         </div>
       </div>
 
@@ -36,7 +46,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
       )}
 
       {/* Main content */}
-      <div className="flex-1 flex flex-col overflow-hidden min-w-0">
+      <div className="flex-1 flex flex-col overflow-hidden min-w-0 transition-all duration-300">
         {/* Mobile topbar */}
         <header className="lg:hidden flex items-center gap-3 px-4 py-3 bg-slate-900 border-b border-slate-800">
           <button onClick={() => setSidebarOpen(true)}
@@ -55,7 +65,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
             <span className="text-sm font-semibold text-white">Container Tracking</span>
           </div>
         </header>
-        <main className="flex-1 overflow-y-auto">{children}</main>
+        <main className="flex-1 overflow-y-auto page-fade-in">{children}</main>
       </div>
     </div>
   );

@@ -86,14 +86,24 @@ export default function YardsPage() {
 
   async function handleDeactivateYard() {
     if (!deactivateYard) return; setDeactivateLoading(true);
-    try { await yardsApi.deactivate(deactivateYard.id); toast.success("Yard dinonaktifkan"); setDeactivateYard(null); fetchData(); }
+    try { 
+      const res = await yardsApi.deactivate(deactivateYard.id); 
+      toast.success(res.data.is_active ? "Yard diaktifkan" : "Yard dinonaktifkan"); 
+      setDeactivateYard(null); 
+      fetchData(); 
+    }
     catch (err) { toast.error(getErrorMessage(err)); }
     finally { setDeactivateLoading(false); }
   }
 
   async function handleDeactivateBlock() {
     if (!deactivateBlock) return; setDeactivateLoading(true);
-    try { await blocksApi.deactivate(deactivateBlock.id); toast.success("Block dinonaktifkan"); setDeactivateBlock(null); fetchData(); }
+    try { 
+      const res = await blocksApi.deactivate(deactivateBlock.id); 
+      toast.success(res.data.is_active ? "Block diaktifkan" : "Block dinonaktifkan"); 
+      setDeactivateBlock(null); 
+      fetchData(); 
+    }
     catch (err) { toast.error(getErrorMessage(err)); }
     finally { setDeactivateLoading(false); }
   }
@@ -136,8 +146,13 @@ export default function YardsPage() {
                     <button className="btn btn-sm btn-ghost" onClick={() => openForm(yard)} title="Edit">
                       <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" /></svg>
                     </button>
-                    <button className="btn btn-sm btn-ghost text-red-400" onClick={() => setDeactivateYard(yard)} title="Nonaktifkan">
-                      <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636" /></svg>
+                    <button className={cn("btn btn-sm btn-ghost", yard.is_active ? "text-red-400" : "text-emerald-400")} 
+                      onClick={() => setDeactivateYard(yard)} title={yard.is_active ? "Nonaktifkan" : "Aktifkan"}>
+                      {yard.is_active ? (
+                        <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636" /></svg>
+                      ) : (
+                        <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" /></svg>
+                      )}
                     </button>
                   </div>
                 </div>
@@ -167,8 +182,13 @@ export default function YardsPage() {
                                 </span>
                               </td>
                               <td className="px-4 py-2">
-                                <button className="btn btn-sm btn-ghost text-red-400" onClick={() => setDeactivateBlock(block)} title="Nonaktifkan">
-                                  <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636" /></svg>
+                                <button className={cn("btn btn-sm btn-ghost", block.is_active ? "text-red-400" : "text-emerald-400")} 
+                                  onClick={() => setDeactivateBlock(block)} title={block.is_active ? "Nonaktifkan" : "Aktifkan"}>
+                                  {block.is_active ? (
+                                    <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636" /></svg>
+                                  ) : (
+                                    <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" /></svg>
+                                  )}
                                 </button>
                               </td>
                             </tr>
@@ -232,9 +252,24 @@ export default function YardsPage() {
         </Modal>
 
         <ConfirmDialog open={!!deactivateYard} onClose={() => setDeactivateYard(null)} onConfirm={handleDeactivateYard}
-          title="Nonaktifkan Yard" message={`Nonaktifkan yard "${deactivateYard?.name}"?`} confirmLabel="Nonaktifkan" danger loading={deactivateLoading} />
+          title={deactivateYard?.is_active ? "Nonaktifkan Yard" : "Aktifkan Yard"} 
+          message={deactivateYard?.is_active 
+            ? `Nonaktifkan yard "${deactivateYard?.name}"?`
+            : `Aktifkan kembali yard "${deactivateYard?.name}"?`} 
+          confirmLabel={deactivateYard?.is_active ? "Nonaktifkan" : "Aktifkan"} 
+          danger={deactivateYard?.is_active}
+          success={!deactivateYard?.is_active}
+          loading={deactivateLoading} />
+
         <ConfirmDialog open={!!deactivateBlock} onClose={() => setDeactivateBlock(null)} onConfirm={handleDeactivateBlock}
-          title="Nonaktifkan Block" message={`Nonaktifkan block "${deactivateBlock?.block_code}"?`} confirmLabel="Nonaktifkan" danger loading={deactivateLoading} />
+          title={deactivateBlock?.is_active ? "Nonaktifkan Block" : "Aktifkan Block"} 
+          message={deactivateBlock?.is_active 
+            ? `Nonaktifkan block "${deactivateBlock?.block_code}"?`
+            : `Aktifkan kembali block "${deactivateBlock?.block_code}"?`} 
+          confirmLabel={deactivateBlock?.is_active ? "Nonaktifkan" : "Aktifkan"} 
+          danger={deactivateBlock?.is_active}
+          success={!deactivateBlock?.is_active}
+          loading={deactivateLoading} />
       </div>
     </AppLayout>
   );

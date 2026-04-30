@@ -86,8 +86,10 @@ export default function UsersPage() {
   async function handleDeactivate() {
     if (!selectedUser) return; setDeactivateLoading(true);
     try {
-      await usersApi.deactivate(selectedUser.id);
-      toast.success("User dinonaktifkan"); setDeactivateConfirm(false); fetchData();
+      const res = await usersApi.deactivate(selectedUser.id);
+      toast.success(res.data.is_active ? "User diaktifkan" : "User dinonaktifkan"); 
+      setDeactivateConfirm(false); 
+      fetchData();
     } catch (err) { toast.error(getErrorMessage(err)); }
     finally { setDeactivateLoading(false); }
   }
@@ -138,8 +140,13 @@ export default function UsersPage() {
                             <button className="btn btn-sm btn-ghost text-amber-400" onClick={() => { setResetUser(u); setResetForm({ password: "", password_confirmation: "" }); setResetOpen(true); }} title="Reset Password">
                               <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z" /></svg>
                             </button>
-                            <button className="btn btn-sm btn-ghost text-red-400" onClick={() => { setSelectedUser(u); setDeactivateConfirm(true); }} title="Nonaktifkan">
-                              <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636" /></svg>
+                            <button className={cn("btn btn-sm btn-ghost", u.is_active ? "text-red-400" : "text-emerald-400")} 
+                              onClick={() => { setSelectedUser(u); setDeactivateConfirm(true); }} title={u.is_active ? "Nonaktifkan" : "Aktifkan"}>
+                              {u.is_active ? (
+                                <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636" /></svg>
+                              ) : (
+                                <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" /></svg>
+                              )}
                             </button>
                           </div>
                         </td>
@@ -241,7 +248,14 @@ export default function UsersPage() {
         </Modal>
 
         <ConfirmDialog open={deactivateConfirm} onClose={() => setDeactivateConfirm(false)} onConfirm={handleDeactivate}
-          title="Nonaktifkan User" message={`Nonaktifkan user ${selectedUser?.name}?`} confirmLabel="Nonaktifkan" danger loading={deactivateLoading} />
+          title={selectedUser?.is_active ? "Nonaktifkan User" : "Aktifkan User"} 
+          message={selectedUser?.is_active 
+            ? `Nonaktifkan user "${selectedUser?.name}"?`
+            : `Aktifkan kembali user "${selectedUser?.name}"?`} 
+          confirmLabel={selectedUser?.is_active ? "Nonaktifkan" : "Aktifkan"} 
+          danger={selectedUser?.is_active}
+          success={!selectedUser?.is_active}
+          loading={deactivateLoading} />
       </div>
     </AppLayout>
   );

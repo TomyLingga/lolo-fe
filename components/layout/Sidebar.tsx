@@ -6,13 +6,14 @@ import { getUser, clearAuth, isAdmin } from "@/lib/auth";
 import { authApi } from "@/lib/api";
 import { cn } from "@/lib/utils";
 import type { User } from "@/types";
+import ConfirmDialog from "@/components/ui/ConfirmDialog";
 
 interface NavItem {
   href?: string;
   label: string;
-  icon: React.ReactNode;
+  icon?: React.ReactNode;
   roles?: string[];
-  children?: { href: string; label: string }[];
+  children?: (NavItem & { href: string })[];
 }
 
 const Icon = ({ path }: { path: string }) => (
@@ -21,14 +22,30 @@ const Icon = ({ path }: { path: string }) => (
   </svg>
 );
 
-export default function Sidebar({ onClose }: { onClose?: () => void }) {
+export default function Sidebar({ onClose, collapsed, onToggleCollapse }: { onClose?: () => void; collapsed?: boolean; onToggleCollapse?: () => void }) {
   const pathname = usePathname();
   const router = useRouter();
   const [user, setUser] = useState<User | null>(null);
-  const [expanded, setExpanded] = useState<string | null>("master");
+  const [expanded, setExpanded] = useState<string | null>(null);
   const [loggingOut, setLoggingOut] = useState(false);
-
+  const [logoutConfirm, setLogoutConfirm] = useState(false);
+  
   useEffect(() => { setUser(getUser()); }, []);
+
+  useEffect(() => {
+    if (collapsed) {
+      setExpanded(null);
+    } else {
+      navItems.forEach(item => {
+        if (item.children) {
+          const isActive = item.children.some(c => pathname.startsWith(c.href));
+          if (isActive) {
+            setExpanded(item.label.toLowerCase().replace(/\s+/g, '-'));
+          }
+        }
+      });
+    }
+  }, [pathname, collapsed]);
 
   const admin = user?.role === "admin";
 
@@ -54,6 +71,17 @@ export default function Sidebar({ onClose }: { onClose?: () => void }) {
       icon: <Icon path="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />,
     },
     {
+      label: "Warehouse",
+      roles: ["admin", "operator", "finance"],
+      icon: <Icon path="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m10 0h2a2 2 0 002-2v-5a2 2 0 00-2-2H3a2 2 0 00-2 2v5a2 2 0 002 2h2" />,
+      children: [
+        { href: "/warehouse-dashboard", label: "Dashboard", roles: ["admin", "operator", "finance"] },
+        { href: "/warehouse-rent", label: "Sewa Warehouse", roles: ["admin", "operator", "finance"] },
+        { href: "/warehouse-ba", label: "Berita Acara", roles: ["admin", "finance"] },
+        { href: "/warehouse-invoices", label: "Invoice", roles: ["admin", "finance"] },
+      ]
+    },
+    {
       label: "Master Data",
       roles: ["admin"],
       icon: <Icon path="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z" />,
@@ -61,6 +89,7 @@ export default function Sidebar({ onClose }: { onClose?: () => void }) {
         { href: "/master/users", label: "User" },
         { href: "/master/freight-forwarders", label: "Freight Forwarder" },
         { href: "/master/yards", label: "Yard & Block" },
+        { href: "/master/warehouses", label: "Warehouse & Chamber" },
         { href: "/master/container-sizes", label: "Container Size & Type" },
         { href: "/master/cargo-statuses", label: "Cargo Status" },
         { href: "/master/taxes", label: "Tax & Discount" },
@@ -83,20 +112,16 @@ export default function Sidebar({ onClose }: { onClose?: () => void }) {
   });
 
   return (
-    <div className="flex flex-col h-full" style={{ background: "#111827", borderRight: "1px solid rgba(255,255,255,0.06)" }}>
+    <div className="flex flex-col h-full transition-all duration-300" style={{ background: "#111827", borderRight: "1px solid rgba(255,255,255,0.06)" }}>
       {/* Header */}
-      <div className="flex items-center gap-3 px-4 py-5" style={{ borderBottom: "1px solid rgba(255,255,255,0.06)" }}>
-        <div className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0"
-          style={{ background: "#e50914" }}>
-          <svg className="w-4 h-4 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
-              d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
-          </svg>
-        </div>
-        <div className="min-w-0">
-          <p className="text-sm font-bold text-white tracking-tight truncate">Container Tracking</p>
-          <p className="text-[11px] text-slate-500 truncate">PT Sei Mangkei Nusantara Tiga</p>
-        </div>
+      <div className={cn("flex items-center gap-3 px-4 py-5 overflow-hidden transition-all duration-300", collapsed && "px-3 justify-center")} style={{ borderBottom: "1px solid rgba(255,255,255,0.06)" }}>
+        <img src="/images/logo-smnt.png" alt="Logo" className={cn("w-8 h-8 object-contain flex-shrink-0 transition-transform", collapsed && "scale-110")} />
+        {!collapsed && (
+          <div className="min-w-0 transition-opacity duration-300">
+            <p className="text-sm font-bold text-white tracking-tight truncate">SMNT Logistics</p>
+            <p className="text-[10px] text-slate-500 truncate uppercase tracking-widest">Management System</p>
+          </div>
+        )}
         {onClose && (
           <button onClick={onClose} className="ml-auto p-1 text-slate-500 hover:text-white lg:hidden">
             <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -107,34 +132,56 @@ export default function Sidebar({ onClose }: { onClose?: () => void }) {
       </div>
 
       {/* Nav */}
-      <nav className="flex-1 overflow-y-auto px-3 py-4 space-y-0.5">
+      <nav className="flex-1 overflow-y-auto px-3 py-4 space-y-0.5 custom-scrollbar">
         {visibleItems.map((item) => {
           if (item.children) {
-            const isOpen = expanded === "master";
-            const isActive = item.children.some(c => pathname.startsWith(c.href));
+            const menuKey = item.label.toLowerCase().replace(/\s+/g, '-');
+            const isOpen = expanded === menuKey;
+            
+            // Filter children based on roles
+            const filteredChildren = item.children.filter(c => {
+              if (!c.roles) return true;
+              if (!user) return false;
+              return c.roles.includes(user.role);
+            });
+
+            if (filteredChildren.length === 0) return null;
+
+            const isActive = filteredChildren.some(c => pathname.startsWith(c.href));
+
             return (
               <div key={item.label}>
                 <button
-                  onClick={() => setExpanded(isOpen ? null : "master")}
-                  className={cn("sidebar-link w-full justify-between", isActive && "text-white")}
+                  onClick={() => !collapsed && setExpanded(isOpen ? null : menuKey)}
+                  className={cn("sidebar-link w-full group", collapsed && "justify-center px-0", isActive && "text-white")}
+                  title={collapsed ? item.label : ""}
                 >
-                  <span className="flex items-center gap-3">{item.icon}{item.label}</span>
-                  <svg className={cn("w-4 h-4 transition-transform flex-shrink-0 text-slate-600", isOpen && "rotate-90")}
-                    fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-                  </svg>
+                  <span className={cn("flex items-center gap-3", collapsed && "gap-0")}>
+                    {item.icon}
+                    {!collapsed && <span>{item.label}</span>}
+                  </span>
+                  {!collapsed && (
+                    <svg className={cn("w-4 h-4 transition-transform flex-shrink-0 text-slate-600", isOpen && "rotate-90")}
+                      fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                    </svg>
+                  )}
                 </button>
-                {isOpen && (
-                  <div className="ml-9 mt-0.5 space-y-0.5">
-                    {item.children.map(child => (
-                      <Link key={child.href} href={child.href} onClick={onClose}
-                        className={cn("block px-3 py-2 rounded-xl text-sm transition-colors",
-                          pathname.startsWith(child.href)
-                            ? "text-brand-400 bg-brand-600/10 font-medium ring-1 ring-brand-500/20"
-                            : "text-slate-500 hover:text-slate-200 hover:bg-white/5")}>
-                        {child.label}
-                      </Link>
-                    ))}
+                {!collapsed && (
+                  <div className={cn("sidebar-child-container", isOpen && "open")}>
+                    <div className="sidebar-child-content">
+                      <div className="ml-9 mt-0.5 space-y-0.5 pb-2">
+                        {filteredChildren.map(child => (
+                          <Link key={child.href} href={child.href} onClick={onClose}
+                            className={cn("block px-3 py-2 rounded-xl text-sm transition-colors",
+                              pathname.startsWith(child.href)
+                                ? "text-brand-400 bg-brand-600/10 font-medium ring-1 ring-brand-500/20"
+                                : "text-slate-500 hover:text-slate-200 hover:bg-white/5")}>
+                            {child.label}
+                          </Link>
+                        ))}
+                      </div>
+                    </div>
                   </div>
                 )}
               </div>
@@ -142,34 +189,59 @@ export default function Sidebar({ onClose }: { onClose?: () => void }) {
           }
           return (
             <Link key={item.href} href={item.href!} onClick={onClose}
-              className={cn("sidebar-link", pathname.startsWith(item.href!) && "active")}>
-              {item.icon}{item.label}
+              title={collapsed ? item.label : ""}
+              className={cn("sidebar-link", collapsed && "justify-center px-0", pathname.startsWith(item.href!) && "active")}>
+              {item.icon}
+              {!collapsed && <span>{item.label}</span>}
             </Link>
           );
         })}
       </nav>
 
-      {/* User / Logout */}
-      <div style={{ borderTop: "1px solid rgba(255,255,255,0.06)" }} className="p-3">
-        <div className="flex items-center gap-3 px-2 py-2 rounded-lg" style={{ background: "rgba(255,255,255,0.03)" }}>
+      {/* Footer Actions / Collapse Toggle */}
+      <div className="p-3 space-y-2" style={{ borderTop: "1px solid rgba(255,255,255,0.06)" }}>
+        {onToggleCollapse && (
+          <button onClick={onToggleCollapse} className="hidden lg:flex sidebar-link w-full justify-center hover:bg-brand-600/10 hover:text-brand-400">
+            <svg className={cn("w-5 h-5 transition-transform duration-500", collapsed && "rotate-180")} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 19l-7-7 7-7M19 19l-7-7 7-7" />
+            </svg>
+          </button>
+        )}
+        
+        <div className={cn("flex items-center gap-3 px-2 py-2 rounded-lg transition-all", collapsed ? "justify-center" : "bg-white/5")}>
           <div className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0"
             style={{ background: "#e50914" }}>
             <span className="text-xs font-bold text-white">{user?.name?.charAt(0)?.toUpperCase()}</span>
           </div>
-          <div className="min-w-0 flex-1">
-            <p className="text-sm font-medium text-white truncate">{user?.name}</p>
-            <p className="text-xs text-slate-500 capitalize">{user?.role}</p>
-          </div>
-          <button onClick={handleLogout} disabled={loggingOut}
-            className="p-1.5 rounded-lg text-slate-500 hover:text-red-400 hover:bg-red-400/10 transition-colors"
-            title="Logout">
-            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
-                d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
-            </svg>
-          </button>
+          {!collapsed && (
+            <div className="min-w-0 flex-1">
+              <p className="text-sm font-medium text-white truncate">{user?.name}</p>
+              <p className="text-[10px] text-slate-500 capitalize tracking-wider font-bold">{user?.role}</p>
+            </div>
+          )}
+          {!collapsed && (
+            <button onClick={() => setLogoutConfirm(true)} disabled={loggingOut}
+              className="p-1.5 rounded-lg text-slate-500 hover:text-red-400 hover:bg-red-400/10 transition-colors"
+              title="Logout">
+              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
+                  d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+              </svg>
+            </button>
+          )}
         </div>
       </div>
+
+      <ConfirmDialog 
+        open={logoutConfirm} 
+        onClose={() => setLogoutConfirm(false)} 
+        onConfirm={handleLogout}
+        title="Logout"
+        message="Apakah Anda yakin ingin keluar dari aplikasi?"
+        confirmLabel="Logout"
+        danger={true}
+        loading={loggingOut}
+      />
     </div>
   );
 }

@@ -20,6 +20,11 @@ export default function LoloTimelineModal({ open, onClose, registration }: Props
     datetime: formatDateTime(r.lolo_at),
     badge: r.operation_type,
     badgeColor: (r.operation_type === "LIFT_ON" ? "amber" : "blue") as "amber" | "blue",
+    icon: r.operation_type === "LIFT_ON" ? (
+      <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 5l7 7-7 7M5 5l7 7-7 7" /></svg>
+    ) : (
+      <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 19l-7-7 7-7M19 19l-7-7 7-7" /></svg>
+    ),
     details: [
       { label: "Kendaraan", value: `${r.vehicle_type || "-"} / ${r.vehicle_number || "-"}` },
       { label: "Status", value: r.cargo_status?.description || "-" },

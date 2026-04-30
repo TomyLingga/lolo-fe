@@ -236,6 +236,158 @@ export interface Invoice {
   registrations?: Registration[];
 }
 
+// ─── Warehouse ─────────────────────────────────────────────────────────────
+export interface Warehouse {
+  id: number;
+  name: string;
+  code: string;
+  location?: string;
+  total_area_m2?: number;
+  description?: string;
+  is_active: boolean;
+  chambers?: WarehouseChamber[];
+}
+
+export interface WarehouseChamber {
+  id: number;
+  warehouse_id: number;
+  code: string;
+  name?: string;
+  length_m?: number;
+  width_m?: number;
+  area_m2?: number;
+  is_active: boolean;
+  warehouse?: Warehouse;
+}
+
+export interface WarehouseTariff {
+  id: number;
+  warehouse_id: number;
+  price_per_m2: number;
+  effective_date: string;
+  is_active: boolean;
+  warehouse?: Warehouse;
+}
+
+export interface WarehouseRegistration {
+  id: number;
+  freight_forwarder_id: number;
+  chamber_id: number;
+  tariff_per_m2: number;
+  area_m2: number;
+  rent_start: string;
+  rent_end: string;
+  record_status: "ACTIVE" | "CLOSED";
+  invoiced: boolean;
+  is_active: boolean;
+  created_at: string;
+  freight_forwarder?: FreightForwarder;
+  chamber?: WarehouseChamber;
+  subtotal: number;
+  total_rent_days: number;
+  total_rent_cost: number;
+  remarks?: WarehouseRegistrationRemark[];
+  remark?: string; // used for initial creation
+}
+
+export interface WarehouseRegistrationRemark {
+  id: number;
+  warehouse_registration_id: number;
+  remark: string;
+  created_at: string;
+  created_by?: { id: number; name: string };
+}
+
+export interface WarehouseBeritaAcara {
+  id: number;
+  freight_forwarder_id: number;
+  warehouse_id: number;
+  ba_number: string;
+  ba_date: string;
+  subtotal: number;
+  bank_name?: string;
+  bank_account_name?: string;
+  bank_account_number?: string;
+  signer_smnt_name?: string;
+  signer_smnt_position?: string;
+  signer_ff_name?: string;
+  signer_ff_position?: string;
+  approver_ff_name?: string;
+  approver_ff_position?: string;
+  invoiced: boolean;
+  is_active: boolean;
+  created_at: string;
+  freight_forwarder?: FreightForwarder;
+  warehouse?: Warehouse;
+  ba_registrations?: WarehouseBaRegistration[];
+  additional_fees?: WarehouseBaAdditionalFee[];
+}
+
+export interface WarehouseBaRegistration {
+  id: number;
+  ba_id: number;
+  warehouse_registration_id: number;
+  area_m2: number;
+  tariff_per_m2: number;
+  months: number;
+  subtotal: number;
+  warehouse_registration?: WarehouseRegistration;
+}
+
+export interface WarehouseBaAdditionalFee {
+  id: number;
+  ba_id: number;
+  fee_name: string;
+  fee_amount: number;
+  note?: string;
+}
+
+export interface WarehouseInvoice {
+  id: number;
+  invoice_number: string;
+  freight_forwarder_id: number;
+  warehouse_id: number;
+  spk_name?: string;
+  spk_number?: string;
+  spk_date?: string;
+  po_number?: string;
+  invoice_date: string;
+  due_date?: string;
+  subtotal: number;
+  grand_total: number;
+  bank_name?: string;
+  swift_code?: string;
+  bank_account_name?: string;
+  bank_account_number?: string;
+  signatory_name?: string;
+  signatory_position?: string;
+  status: "DRAFT" | "PAID";
+  is_active: boolean;
+  created_at: string;
+  freight_forwarder?: FreightForwarder;
+  warehouse?: Warehouse;
+  invoice_bas?: WarehouseInvoiceBa[];
+  taxes?: WarehouseInvoiceTax[];
+}
+
+export interface WarehouseInvoiceBa {
+  id: number;
+  warehouse_invoice_id: number;
+  ba_id: number;
+  ba?: WarehouseBeritaAcara;
+}
+
+export interface WarehouseInvoiceTax {
+  id: number;
+  warehouse_invoice_id: number;
+  tax_id: number;
+  tax_name: string;
+  tax_value: number;
+  tax_value_type: "PERCENTAGE" | "NOMINAL";
+  tax_type: "ADD" | "DEDUCT";
+  amount: number;
+}
+
 // ─── API Response ─────────────────────────────────────────────────────────────
 export interface ApiResponse<T> {
   data: T;

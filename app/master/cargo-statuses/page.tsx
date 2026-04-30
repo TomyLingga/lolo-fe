@@ -46,7 +46,12 @@ export default function CargoStatusesPage() {
 
   async function handleDeactivate() {
     if (!deactivateItem) return; setDeactivateLoading(true);
-    try { await cargoStatusesApi.deactivate(deactivateItem.id); toast.success("Data dinonaktifkan"); setDeactivateItem(null); fetchData(); }
+    try { 
+      const res = await cargoStatusesApi.deactivate(deactivateItem.id); 
+      toast.success(res.data.is_active ? "Data diaktifkan" : "Data dinonaktifkan"); 
+      setDeactivateItem(null); 
+      fetchData(); 
+    }
     catch (err) { toast.error(getErrorMessage(err)); }
     finally { setDeactivateLoading(false); }
   }
@@ -79,8 +84,13 @@ export default function CargoStatusesPage() {
                       <button className="btn btn-sm btn-ghost" onClick={() => openForm(item)}>
                         <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" /></svg>
                       </button>
-                      <button className="btn btn-sm btn-ghost text-red-400" onClick={() => setDeactivateItem(item)}>
-                        <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636" /></svg>
+                      <button className={cn("btn btn-sm btn-ghost", item.is_active ? "text-red-400" : "text-emerald-400")} 
+                        onClick={() => setDeactivateItem(item)} title={item.is_active ? "Nonaktifkan" : "Aktifkan"}>
+                        {item.is_active ? (
+                          <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636" /></svg>
+                        ) : (
+                          <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" /></svg>
+                        )}
                       </button>
                     </div></td>
                   </tr>
@@ -102,7 +112,14 @@ export default function CargoStatusesPage() {
           </form>
         </Modal>
         <ConfirmDialog open={!!deactivateItem} onClose={() => setDeactivateItem(null)} onConfirm={handleDeactivate}
-          title="Nonaktifkan Cargo Status" message={`Nonaktifkan "${deactivateItem?.code}"?`} confirmLabel="Nonaktifkan" danger loading={deactivateLoading} />
+          title={deactivateItem?.is_active ? "Nonaktifkan Cargo Status" : "Aktifkan Cargo Status"} 
+          message={deactivateItem?.is_active 
+            ? `Nonaktifkan cargo status "${deactivateItem?.code}"?`
+            : `Aktifkan kembali cargo status "${deactivateItem?.code}"?`} 
+          confirmLabel={deactivateItem?.is_active ? "Nonaktifkan" : "Aktifkan"} 
+          danger={deactivateItem?.is_active}
+          success={!deactivateItem?.is_active}
+          loading={deactivateLoading} />
       </div>
     </AppLayout>
   );

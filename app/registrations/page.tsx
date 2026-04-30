@@ -385,7 +385,6 @@ export default function RegistrationsPage() {
                       </td>
                       <td className="px-4 py-3">
                         <p className="font-mono font-semibold text-white">{reg.container_number}</p>
-                        <p className="text-xs text-slate-500">#{reg.id}</p>
                       </td>
                       <td className="px-4 py-3 text-slate-300">
                         {(reg as any).freight_forwarders?.name || "-"}

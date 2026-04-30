@@ -79,8 +79,8 @@ export default function PackagesPage() {
     if (!deactivateItem) return;
     setDeactivateLoading(true);
     try {
-      await packagesApi.deactivate(deactivateItem.id);
-      toast.success(deactivateItem.is_active ? "Data dinonaktifkan" : "Data diaktifkan");
+      const res = await packagesApi.deactivate(deactivateItem.id);
+      toast.success(res.data.is_active ? "Data diaktifkan" : "Data dinonaktifkan");
       setDeactivateItem(null);
       fetchData();
     } catch (err) { toast.error(getErrorMessage(err)); }
@@ -158,8 +158,7 @@ export default function PackagesPage() {
                             {item.is_active
                               ? <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
                                 d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636" />
-                              : <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
-                                d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                              : <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                             }
                           </svg>
                         </button>
@@ -207,9 +206,13 @@ export default function PackagesPage() {
         <ConfirmDialog
           open={!!deactivateItem} onClose={() => setDeactivateItem(null)} onConfirm={handleDeactivate}
           title={deactivateItem?.is_active ? "Nonaktifkan Paket" : "Aktifkan Paket"}
-          message={`${deactivateItem?.is_active ? "Nonaktifkan" : "Aktifkan"} "${deactivateItem?.name}"?`}
+          message={deactivateItem?.is_active 
+            ? `Nonaktifkan paket "${deactivateItem?.name}"?`
+            : `Aktifkan kembali paket "${deactivateItem?.name}"?`}
           confirmLabel={deactivateItem?.is_active ? "Nonaktifkan" : "Aktifkan"}
-          danger={deactivateItem?.is_active} loading={deactivateLoading} />
+          danger={deactivateItem?.is_active} 
+          success={!deactivateItem?.is_active}
+          loading={deactivateLoading} />
       </div>
     </AppLayout>
   );

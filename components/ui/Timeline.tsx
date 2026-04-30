@@ -9,6 +9,7 @@ interface TimelineItem {
   badge?: string;
   badgeColor?: "blue" | "green" | "amber" | "slate" | "red";
   details?: { label: string; value: React.ReactNode }[];
+  icon?: React.ReactNode;
 }
 
 export default function Timeline({ items }: { items: TimelineItem[] }) {
@@ -16,14 +17,26 @@ export default function Timeline({ items }: { items: TimelineItem[] }) {
   return (
     <div className="space-y-4">
       {items.map((item, i) => (
-        <div key={item.id} className="flex gap-3">
+        <div key={item.id} className="flex gap-4">
           <div className="flex flex-col items-center">
-            <div className={cn("timeline-dot-blue",
-              item.badgeColor === "green" && "timeline-dot-green",
-              item.badgeColor === "amber" && "timeline-dot-amber",
-              item.badgeColor === "slate" && "timeline-dot-slate",
-              item.badgeColor === "red" && "w-3 h-3 rounded-full bg-red-500 ring-4 ring-red-500/20 flex-shrink-0 mt-0.5",
-            )} />
+            {item.icon ? (
+              <div className={cn(
+                "w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 z-10 ring-4 ring-slate-900",
+                item.badgeColor === "green" ? "bg-emerald-500/10 text-emerald-500 ring-emerald-500/20" :
+                item.badgeColor === "amber" ? "bg-amber-500/10 text-amber-500 ring-amber-500/20" :
+                item.badgeColor === "red" ? "bg-red-500/10 text-red-500 ring-red-500/20" :
+                "bg-blue-500/10 text-blue-500 ring-blue-500/20"
+              )}>
+                {item.icon}
+              </div>
+            ) : (
+              <div className={cn("timeline-dot-blue",
+                item.badgeColor === "green" && "timeline-dot-green",
+                item.badgeColor === "amber" && "timeline-dot-amber",
+                item.badgeColor === "slate" && "timeline-dot-slate",
+                item.badgeColor === "red" && "w-3 h-3 rounded-full bg-red-500 ring-4 ring-red-500/20 flex-shrink-0 mt-0.5",
+              )} />
+            )}
             {i < items.length - 1 && <div className="w-0.5 flex-1 bg-slate-800 mt-1 min-h-4" />}
           </div>
           <div className="pb-4 flex-1 min-w-0">
