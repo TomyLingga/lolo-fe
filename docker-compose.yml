@@ -1,0 +1,24 @@
+version: '3.8'
+
+
+
+services:
+
+  lolo-frontend:
+
+    build: .
+
+    container_name: lolo-fe-app
+
+    ports:
+
+      - "8089:80" # Akses frontend di port 8089
+
+    restart: unless-stopped
+
+
+
+
+
+
+

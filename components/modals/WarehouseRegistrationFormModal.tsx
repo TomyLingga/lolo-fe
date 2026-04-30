@@ -1,5 +1,5 @@
 "use client";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import Modal from "@/components/ui/Modal";
 import { freightForwardersApi, warehousesApi, warehouseRegistrationsApi } from "@/lib/api";
 import { getErrorMessage } from "@/lib/utils";
@@ -23,7 +23,7 @@ export default function WarehouseRegistrationFormModal({ open, onClose, registra
   const [formData, setFormData] = useState({
     freight_forwarder_id: "",
     warehouse_id: "",
-    warehouse_chamber_id: "",
+    chamber_id: "",
     rent_start: "",
     rent_end: "",
     remark: ""
@@ -36,7 +36,7 @@ export default function WarehouseRegistrationFormModal({ open, onClose, registra
         setFormData({
           freight_forwarder_id: registration.freight_forwarder_id.toString(),
           warehouse_id: registration.chamber?.warehouse_id.toString() || "",
-          warehouse_chamber_id: registration.warehouse_chamber_id.toString(),
+          chamber_id: registration.chamber_id.toString(),
           rent_start: registration.rent_start.split("T")[0],
           rent_end: registration.rent_end.split("T")[0],
           remark: registration.remark || ""
@@ -45,7 +45,7 @@ export default function WarehouseRegistrationFormModal({ open, onClose, registra
         setFormData({
           freight_forwarder_id: "",
           warehouse_id: "",
-          warehouse_chamber_id: "",
+          chamber_id: "",
           rent_start: "",
           rent_end: "",
           remark: ""
@@ -54,13 +54,26 @@ export default function WarehouseRegistrationFormModal({ open, onClose, registra
     }
   }, [open, registration]);
 
+  const loadAvailableChambers = useCallback(async () => {
+    try {
+      const res = await warehouseRegistrationsApi.getAvailableChambers({
+        warehouse_id: parseInt(formData.warehouse_id),
+        rent_start: formData.rent_start,
+        rent_end: formData.rent_end
+      });
+      setChambers(res.data.data || []);
+    } catch (err) {
+      console.error(err);
+    }
+  }, [formData.warehouse_id, formData.rent_start, formData.rent_end]);
+
   useEffect(() => {
     if (formData.warehouse_id && formData.rent_start && formData.rent_end) {
       loadAvailableChambers();
     } else {
       setChambers([]);
     }
-  }, [formData.warehouse_id, formData.rent_start, formData.rent_end]);
+  }, [formData.warehouse_id, formData.rent_start, formData.rent_end, loadAvailableChambers]);
 
   async function loadMaster() {
     setLoading(true);
@@ -78,18 +91,7 @@ export default function WarehouseRegistrationFormModal({ open, onClose, registra
     }
   }
 
-  async function loadAvailableChambers() {
-    try {
-      const res = await warehouseRegistrationsApi.getAvailableChambers({
-        warehouse_id: parseInt(formData.warehouse_id),
-        rent_start: formData.rent_start,
-        rent_end: formData.rent_end
-      });
-      setChambers(res.data.data || []);
-    } catch (err) {
-      console.error(err);
-    }
-  }
+
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -98,7 +100,7 @@ export default function WarehouseRegistrationFormModal({ open, onClose, registra
       const payload = {
         ...formData,
         freight_forwarder_id: parseInt(formData.freight_forwarder_id),
-        warehouse_chamber_id: parseInt(formData.warehouse_chamber_id),
+        chamber_id: parseInt(formData.chamber_id),
       };
       if (registration) {
         await warehouseRegistrationsApi.update(registration.id, payload);
@@ -128,7 +130,7 @@ export default function WarehouseRegistrationFormModal({ open, onClose, registra
           </div>
           <div>
             <label className="label">Warehouse <span className="text-red-400">*</span></label>
-            <select className="input" required value={formData.warehouse_id} onChange={e => setFormData({ ...formData, warehouse_id: e.target.value, warehouse_chamber_id: "" })}>
+            <select className="input" required value={formData.warehouse_id} onChange={e => setFormData({ ...formData, warehouse_id: e.target.value, chamber_id: "" })}>
               <option value="">Pilih Warehouse</option>
               {warehouses.map(w => <option key={w.id} value={w.id}>{w.name}</option>)}
             </select>
@@ -143,7 +145,7 @@ export default function WarehouseRegistrationFormModal({ open, onClose, registra
           </div>
           <div className="md:col-span-2">
             <label className="label">Chamber <span className="text-red-400">*</span></label>
-            <select className="input" required value={formData.warehouse_chamber_id} onChange={e => setFormData({ ...formData, warehouse_chamber_id: e.target.value })} disabled={!formData.warehouse_id || chambers.length === 0}>
+            <select className="input" required value={formData.chamber_id} onChange={e => setFormData({ ...formData, chamber_id: e.target.value })} disabled={!formData.warehouse_id || chambers.length === 0}>
               <option value="">{chambers.length === 0 ? "Tidak ada chamber tersedia" : "Pilih Chamber"}</option>
               {chambers.map(c => <option key={c.id} value={c.id}>{c.code} ({c.warehouse?.name})</option>)}
             </select>
