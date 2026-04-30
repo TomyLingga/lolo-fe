@@ -16,116 +16,144 @@ interface Props {
 export default function WarehouseRegistrationFormModal({ open, onClose, registration, onSaved }: Props) {
   const [ffs, setFfs] = useState<FreightForwarder[]>([]);
   const [warehouses, setWarehouses] = useState<Warehouse[]>([]);
-  const [availableChambers, setAvailableChambers] = useState<WarehouseChamber[]>([]);
-  const [loadingChambers, setLoadingChambers] = useState(false);
+  const [chambers, setChambers] = useState<WarehouseChamber[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [saving, setSaving] = useState(false);
 
-  const [form, setForm] = useState({
+  const [formData, setFormData] = useState({
     freight_forwarder_id: "",
     warehouse_id: "",
-    chamber_id: "",
+    warehouse_chamber_id: "",
     rent_start: "",
     rent_end: "",
     remark: ""
   });
-  const [saving, setSaving] = useState(false);
 
   useEffect(() => {
     if (open) {
-      Promise.all([freightForwardersApi.getAll(), warehousesApi.getAll()])
-        .then(([f, w]) => { setFfs(f.data.data); setWarehouses(w.data.data); })
-        .catch(() => {});
-      
+      loadMaster();
       if (registration) {
-        setForm({
-          freight_forwarder_id: String(registration.freight_forwarder_id),
-          warehouse_id: String(registration.chamber?.warehouse_id || ""),
-          chamber_id: String(registration.chamber_id),
-          rent_start: registration.rent_start?.slice(0, 10) || "",
-          rent_end: registration.rent_end?.slice(0, 10) || "",
-          remark: ""
+        setFormData({
+          freight_forwarder_id: registration.freight_forwarder_id.toString(),
+          warehouse_id: registration.chamber?.warehouse_id.toString() || "",
+          warehouse_chamber_id: registration.warehouse_chamber_id.toString(),
+          rent_start: registration.rent_start.split("T")[0],
+          rent_end: registration.rent_end.split("T")[0],
+          remark: registration.remark || ""
         });
       } else {
-        setForm({ freight_forwarder_id: "", warehouse_id: "", chamber_id: "", rent_start: "", rent_end: "", remark: "" });
+        setFormData({
+          freight_forwarder_id: "",
+          warehouse_id: "",
+          warehouse_chamber_id: "",
+          rent_start: "",
+          rent_end: "",
+          remark: ""
+        });
       }
     }
   }, [open, registration]);
 
   useEffect(() => {
-    if (form.warehouse_id && form.rent_start && form.rent_end) {
-      setLoadingChambers(true);
-      warehouseRegistrationsApi.getAvailableChambers({
-        warehouse_id: Number(form.warehouse_id),
-        rent_start: form.rent_start,
-        rent_end: form.rent_end
-      }).then(res => {
-        setAvailableChambers(res.data.data);
-        // If editing and the current chamber is not in available list (because it's occupied by itself), we might need to add it manually or the API might already handle it.
-        // The API I saw doesn't take 'exclude_id' for available chambers list, but let's see.
-      }).finally(() => setLoadingChambers(false));
+    if (formData.warehouse_id && formData.rent_start && formData.rent_end) {
+      loadAvailableChambers();
     } else {
-      setAvailableChambers([]);
+      setChambers([]);
     }
-  }, [form.warehouse_id, form.rent_start, form.rent_end]);
+  }, [formData.warehouse_id, formData.rent_start, formData.rent_end]);
+
+  async function loadMaster() {
+    setLoading(true);
+    try {
+      const [ffRes, whRes] = await Promise.all([
+        freightForwardersApi.getAll(),
+        warehousesApi.getAll()
+      ]);
+      setFfs(ffRes.data.data || []);
+      setWarehouses(whRes.data.data || []);
+    } catch (err) {
+      toast.error("Gagal memuat data master");
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  async function loadAvailableChambers() {
+    try {
+      const res = await warehouseRegistrationsApi.getAvailableChambers({
+        warehouse_id: parseInt(formData.warehouse_id),
+        rent_start: formData.rent_start,
+        rent_end: formData.rent_end
+      });
+      setChambers(res.data.data || []);
+    } catch (err) {
+      console.error(err);
+    }
+  }
 
   async function handleSubmit(e: React.FormEvent) {
-    e.preventDefault(); setSaving(true);
+    e.preventDefault();
+    setSaving(true);
     try {
+      const payload = {
+        ...formData,
+        freight_forwarder_id: parseInt(formData.freight_forwarder_id),
+        warehouse_chamber_id: parseInt(formData.warehouse_chamber_id),
+      };
       if (registration) {
-        await warehouseRegistrationsApi.update(registration.id, {
-          rent_start: form.rent_start,
-          rent_end: form.rent_end
-        });
+        await warehouseRegistrationsApi.update(registration.id, payload);
+        toast.success("Registrasi diperbarui");
       } else {
-        await warehouseRegistrationsApi.create({
-          freight_forwarder_id: Number(form.freight_forwarder_id),
-          chamber_id: Number(form.chamber_id),
-          rent_start: form.rent_start,
-          rent_end: form.rent_end,
-          remark: form.remark
-        });
+        await warehouseRegistrationsApi.create(payload);
+        toast.success("Registrasi berhasil");
       }
-      toast.success(registration ? "Sewa diperbarui" : "Sewa dibuat"); onSaved();
-    } catch (err) { toast.error(getErrorMessage(err)); }
-    finally { setSaving(false); }
+      onSaved();
+    } catch (err) {
+      toast.error(getErrorMessage(err));
+    } finally {
+      setSaving(false);
+    }
   }
 
   return (
-    <Modal open={open} onClose={onClose} title={registration ? "Edit Sewa" : "Tambah Sewa"} size="lg">
-      <form onSubmit={handleSubmit} className="space-y-4">
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          <div className={cn(registration && "opacity-50 pointer-events-none")}>
+    <Modal open={open} onClose={onClose} title={registration ? "Edit Registrasi Warehouse" : "Tambah Registrasi Warehouse"} size="lg">
+      <form onSubmit={handleSubmit} className="p-4 space-y-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div>
             <label className="label">Freight Forwarder <span className="text-red-400">*</span></label>
-            <select className="input" required value={form.freight_forwarder_id} onChange={e => setForm(p => ({ ...p, freight_forwarder_id: e.target.value }))}>
-              <option value="">-- Pilih --</option>{ffs.map(f => <option key={f.id} value={f.id}>{f.name}</option>)}
+            <select className="input" required value={formData.freight_forwarder_id} onChange={e => setFormData({ ...formData, freight_forwarder_id: e.target.value })}>
+              <option value="">Pilih FF</option>
+              {ffs.map(f => <option key={f.id} value={f.id}>{f.name}</option>)}
             </select>
           </div>
-          <div className={cn(registration && "opacity-50 pointer-events-none")}>
+          <div>
             <label className="label">Warehouse <span className="text-red-400">*</span></label>
-            <select className="input" required value={form.warehouse_id} onChange={e => setForm(p => ({ ...p, warehouse_id: e.target.value }))}>
-              <option value="">-- Pilih --</option>{warehouses.map(w => <option key={w.id} value={w.id}>{w.name}</option>)}
+            <select className="input" required value={formData.warehouse_id} onChange={e => setFormData({ ...formData, warehouse_id: e.target.value, warehouse_chamber_id: "" })}>
+              <option value="">Pilih Warehouse</option>
+              {warehouses.map(w => <option key={w.id} value={w.id}>{w.name}</option>)}
             </select>
           </div>
-          <div><label className="label">Mulai Sewa <span className="text-red-400">*</span></label>
-            <input className="input" type="date" required value={form.rent_start} onChange={e => setForm(p => ({ ...p, rent_start: e.target.value }))} /></div>
-          <div><label className="label">Selesai Sewa <span className="text-red-400">*</span></label>
-            <input className="input" type="date" required value={form.rent_end} onChange={e => setForm(p => ({ ...p, rent_end: e.target.value }))} /></div>
-          <div className={cn("sm:col-span-2", registration && "opacity-50 pointer-events-none")}>
-            <label className="label">Chamber <span className="text-red-400">*</span> {loadingChambers && <span className="text-xs text-slate-500 ml-2 animate-pulse">Mengecek ketersediaan...</span>}</label>
-            <select className="input" required value={form.chamber_id} onChange={e => setForm(p => ({ ...p, chamber_id: e.target.value }))}>
-              <option value="">-- Pilih --</option>
-              {availableChambers.map(c => (
-                <option key={c.id} value={c.id} disabled={!(c as any).is_available && c.id !== registration?.chamber_id}>
-                  {c.code} - {c.name || "No name"} {!(c as any).is_available && c.id !== registration?.chamber_id ? "(Penuh)" : ""}
-                </option>
-              ))}
+          <div>
+            <label className="label">Mulai Sewa <span className="text-red-400">*</span></label>
+            <input type="date" className="input" required value={formData.rent_start} onChange={e => setFormData({ ...formData, rent_start: e.target.value })} />
+          </div>
+          <div>
+            <label className="label">Selesai Sewa <span className="text-red-400">*</span></label>
+            <input type="date" className="input" required value={formData.rent_end} onChange={e => setFormData({ ...formData, rent_end: e.target.value })} />
+          </div>
+          <div className="md:col-span-2">
+            <label className="label">Chamber <span className="text-red-400">*</span></label>
+            <select className="input" required value={formData.warehouse_chamber_id} onChange={e => setFormData({ ...formData, warehouse_chamber_id: e.target.value })} disabled={!formData.warehouse_id || chambers.length === 0}>
+              <option value="">{chambers.length === 0 ? "Tidak ada chamber tersedia" : "Pilih Chamber"}</option>
+              {chambers.map(c => <option key={c.id} value={c.id}>{c.code} ({c.warehouse?.name})</option>)}
             </select>
           </div>
-          {!registration && (
-            <div className="sm:col-span-2"><label className="label">Catatan Awal</label>
-              <textarea className="input" rows={2} value={form.remark} onChange={e => setForm(p => ({ ...p, remark: e.target.value }))} placeholder="Optional..." /></div>
-          )}
+          <div className="md:col-span-2">
+            <label className="label">Remark</label>
+            <textarea className="input" rows={2} value={formData.remark} onChange={e => setFormData({ ...formData, remark: e.target.value })} placeholder="Catatan tambahan..." />
+          </div>
         </div>
-        <div className="flex gap-3 justify-end pt-4 border-t border-slate-800">
+        <div className="flex justify-end gap-3 pt-4 border-t border-slate-800">
           <button type="button" className="btn-secondary" onClick={onClose}>Batal</button>
           <button type="submit" className="btn-primary" disabled={saving}>{saving ? "Menyimpan..." : "Simpan"}</button>
         </div>
@@ -133,5 +161,3 @@ export default function WarehouseRegistrationFormModal({ open, onClose, registra
     </Modal>
   );
 }
-
-function cn(...classes: any[]) { return classes.filter(Boolean).join(" "); }

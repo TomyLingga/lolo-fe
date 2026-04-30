@@ -1,5 +1,5 @@
 "use client";
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import AppLayout from "@/components/layout/AppLayout";
 import PageHeader from "@/components/ui/PageHeader";
 import ConfirmDialog from "@/components/ui/ConfirmDialog";
@@ -42,12 +42,13 @@ export default function WarehouseRentPage() {
   const [selectedReg, setSelectedReg] = useState<WarehouseRegistration | null>(null);
   const [deactivateConfirm, setDeactivateConfirm] = useState(false);
   const [closeConfirm, setCloseConfirm] = useState(false);
+  const [closeDate, setCloseDate] = useState(getLocalDate(today));
   const [closeRemark, setCloseRemark] = useState("");
   const [actionLoading, setActionLoading] = useState(false);
 
   const fetchTimeout = useRef<NodeJS.Timeout | null>(null);
 
-  async function fetchData() {
+  const fetchData = useCallback(async () => {
     setLoading(true);
     try {
       let res;
@@ -59,13 +60,13 @@ export default function WarehouseRentPage() {
       if (err?.response?.status === 404) setData([]);
       else toast.error(getErrorMessage(err));
     } finally { setLoading(false); }
-  }
+  }, [tab, dateFrom, dateTo]);
 
   useEffect(() => {
     if (fetchTimeout.current) clearTimeout(fetchTimeout.current);
     fetchTimeout.current = setTimeout(() => { fetchData(); }, 50);
     return () => { if (fetchTimeout.current) clearTimeout(fetchTimeout.current); };
-  }, [tab, dateFrom, dateTo]);
+  }, [fetchData]);
 
   let filtered = search
     ? data.filter(r => [r.freight_forwarder?.name, r.chamber?.warehouse?.name, r.chamber?.code]
@@ -78,10 +79,14 @@ export default function WarehouseRentPage() {
 
   async function handleClose(e: React.FormEvent) {
     e.preventDefault(); if (!selectedReg) return;
+    if (!closeDate) { toast.error("Tanggal penutupan wajib diisi"); return; }
     if (!closeRemark.trim()) { toast.error("Catatan penutupan wajib diisi"); return; }
     setActionLoading(true);
     try {
-      await warehouseRegistrationsApi.close(selectedReg.id, { remark: closeRemark });
+      await warehouseRegistrationsApi.close(selectedReg.id, {
+        rent_end: closeDate,
+        remark: closeRemark
+      });
       toast.success("Sewa ditutup"); setCloseConfirm(false); fetchData();
     } catch (err) { toast.error(getErrorMessage(err)); }
     finally { setActionLoading(false); }
@@ -131,58 +136,58 @@ export default function WarehouseRentPage() {
                   ))}
                 </tr>
                 <tr className="bg-slate-900/40">
-                  <td className="px-2 py-1"><input className="input py-1 text-xs w-full bg-slate-800/50 border-slate-700" placeholder="Filter..." value={colFilters.ff} onChange={e => setColFilters(p => ({...p, ff: e.target.value}))} /></td>
-                  <td className="px-2 py-1"><input className="input py-1 text-xs w-full bg-slate-800/50 border-slate-700" placeholder="Filter..." value={colFilters.warehouse} onChange={e => setColFilters(p => ({...p, warehouse: e.target.value}))} /></td>
-                  <td className="px-2 py-1"><input className="input py-1 text-xs w-full bg-slate-800/50 border-slate-700" placeholder="Filter..." value={colFilters.chamber} onChange={e => setColFilters(p => ({...p, chamber: e.target.value}))} /></td>
+                  <td className="px-2 py-1"><input className="input py-1 text-xs w-full bg-slate-800/50 border-slate-700" placeholder="Filter..." value={colFilters.ff} onChange={e => setColFilters(p => ({ ...p, ff: e.target.value }))} /></td>
+                  <td className="px-2 py-1"><input className="input py-1 text-xs w-full bg-slate-800/50 border-slate-700" placeholder="Filter..." value={colFilters.warehouse} onChange={e => setColFilters(p => ({ ...p, warehouse: e.target.value }))} /></td>
+                  <td className="px-2 py-1"><input className="input py-1 text-xs w-full bg-slate-800/50 border-slate-700" placeholder="Filter..." value={colFilters.chamber} onChange={e => setColFilters(p => ({ ...p, chamber: e.target.value }))} /></td>
                   <td colSpan={6}></td>
                 </tr>
               </thead>
               <tbody>
                 {loading ? <tr><td colSpan={9} className="px-4 py-12 text-center text-slate-500">Memuat...</td></tr>
-                : filtered.length === 0 ? <tr><td colSpan={9} className="px-4 py-12 text-center text-slate-500">Tidak ada data</td></tr>
-                : filtered.map(reg => (
-                  <tr key={reg.id} className={cn("table-row", !reg.is_active && "opacity-40")}>
-                    <td className="px-4 py-3 text-white font-medium">{reg.freight_forwarder?.name}</td>
-                    <td className="px-4 py-3 text-slate-300">{reg.chamber?.warehouse?.name}</td>
-                    <td className="px-4 py-3 text-slate-300 font-mono">{reg.chamber?.code}</td>
-                    <td className="px-4 py-3 text-slate-400">{reg.area_m2} m²</td>
-                    <td className="px-4 py-3 text-slate-400">{formatCurrency(reg.tariff_per_m2)}</td>
-                    <td className="px-4 py-3 text-xs">
-                      <p className="text-slate-300">{formatDate(reg.rent_start)} - {formatDate(reg.rent_end)}</p>
-                      <p className="text-slate-500">{reg.total_rent_days} hari</p>
-                    </td>
-                    <td className="px-4 py-3 text-brand-400 font-semibold">{formatCurrency(reg.total_rent_cost)}</td>
-                    <td className="px-4 py-3">
-                      <span className={cn("badge", reg.record_status === "ACTIVE" ? "badge-green" : "badge-slate")}>{reg.record_status}</span>
-                      {reg.invoiced && <span className="badge badge-blue ml-1">Invoiced</span>}
-                    </td>
-                    <td className="px-4 py-3">
-                      <div className="flex items-center gap-1">
-                        <button onClick={() => { setSelectedReg(reg); setRemarkReadOnly(reg.record_status === "CLOSED"); setRemarkOpen(true); }} className="btn btn-sm btn-ghost" title="Catatan">
-                          <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 8h10M7 12h4m1 8l-4-4H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-3l-4 4z" /></svg>
-                        </button>
-                        {reg.record_status === "ACTIVE" && reg.is_active && (
-                          <button onClick={() => { setSelectedReg(reg); setCloseRemark(""); setCloseConfirm(true); }} className="btn btn-sm btn-success" title="Tutup Sewa">
-                            <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" /></svg>
-                          </button>
-                        )}
-                        {isAdmin && reg.record_status === "ACTIVE" && (
-                          <button onClick={() => { setEditReg(reg); setFormOpen(true); }} className="btn btn-sm btn-ghost" title="Edit">
-                            <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" /></svg>
-                          </button>
-                        )}
-                        {isAdmin && !reg.invoiced && (
-                          <button onClick={() => { setSelectedReg(reg); setDeactivateConfirm(true); }} className={cn("btn btn-sm btn-ghost", reg.is_active ? "text-red-400" : "text-emerald-400")} title={reg.is_active ? "Nonaktifkan" : "Aktifkan"}>
-                            <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                              {reg.is_active ? <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636" />
-                              : <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />}
-                            </svg>
-                          </button>
-                        )}
-                      </div>
-                    </td>
-                  </tr>
-                ))}
+                  : filtered.length === 0 ? <tr><td colSpan={9} className="px-4 py-12 text-center text-slate-500">Tidak ada data</td></tr>
+                    : filtered.map(reg => (
+                      <tr key={reg.id} className={cn("table-row", !reg.is_active && "opacity-40")}>
+                        <td className="px-4 py-3 text-white font-medium">{reg.freight_forwarder?.name}</td>
+                        <td className="px-4 py-3 text-slate-300">{reg.chamber?.warehouse?.name}</td>
+                        <td className="px-4 py-3 text-slate-300 font-mono">{reg.chamber?.code}</td>
+                        <td className="px-4 py-3 text-slate-400">{reg.area_m2} m²</td>
+                        <td className="px-4 py-3 text-slate-400">{formatCurrency(reg.tariff_per_m2)}</td>
+                        <td className="px-4 py-3 text-xs">
+                          <p className="text-slate-300">{formatDate(reg.rent_start)} - {formatDate(reg.rent_end)}</p>
+                          <p className="text-slate-500">{reg.total_rent_days} hari</p>
+                        </td>
+                        <td className="px-4 py-3 text-brand-400 font-semibold">{formatCurrency(reg.total_rent_cost)}</td>
+                        <td className="px-4 py-3">
+                          <span className={cn("badge", reg.record_status === "ACTIVE" ? "badge-green" : "badge-slate")}>{reg.record_status}</span>
+                          {reg.invoiced && <span className="badge badge-blue ml-1">Invoiced</span>}
+                        </td>
+                        <td className="px-4 py-3">
+                          <div className="flex items-center gap-1">
+                            <button onClick={() => { setSelectedReg(reg); setRemarkReadOnly(reg.record_status === "CLOSED"); setRemarkOpen(true); }} className="btn btn-sm btn-ghost" title="Catatan">
+                              <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 8h10M7 12h4m1 8l-4-4H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-3l-4 4z" /></svg>
+                            </button>
+                            {reg.record_status === "ACTIVE" && reg.is_active && (
+                              <button onClick={() => { setSelectedReg(reg); setCloseRemark(""); setCloseConfirm(true); }} className="btn btn-sm btn-success" title="Tutup Sewa">
+                                <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" /></svg>
+                              </button>
+                            )}
+                            {isAdmin && reg.record_status === "ACTIVE" && (
+                              <button onClick={() => { setEditReg(reg); setFormOpen(true); }} className="btn btn-sm btn-ghost" title="Edit">
+                                <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" /></svg>
+                              </button>
+                            )}
+                            {isAdmin && !reg.invoiced && (
+                              <button onClick={() => { setSelectedReg(reg); setDeactivateConfirm(true); }} className={cn("btn btn-sm btn-ghost", reg.is_active ? "text-red-400" : "text-emerald-400")} title={reg.is_active ? "Nonaktifkan" : "Aktifkan"}>
+                                <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                  {reg.is_active ? <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636" />
+                                    : <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />}
+                                </svg>
+                              </button>
+                            )}
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
               </tbody>
             </table>
           </div>
@@ -194,8 +199,16 @@ export default function WarehouseRentPage() {
         <Modal open={closeConfirm} onClose={() => setCloseConfirm(false)} title="Tutup Sewa Warehouse" size="md">
           <form onSubmit={handleClose} className="space-y-4">
             <p className="text-sm text-slate-300">Tutup sewa untuk <span className="font-bold text-white">{selectedReg?.freight_forwarder?.name}</span> di chamber <span className="font-bold text-white">{selectedReg?.chamber?.code}</span>?</p>
-            <div><label className="label">Catatan Penutupan <span className="text-red-400">*</span></label>
-              <textarea className="input" rows={3} required value={closeRemark} onChange={e => setCloseRemark(e.target.value)} placeholder="Catatan penutupan..." /></div>
+            <div className="grid grid-cols-1 gap-4">
+              <div>
+                <label className="label">Tanggal Penutupan <span className="text-red-400">*</span></label>
+                <input type="date" className="input" required value={closeDate} onChange={e => setCloseDate(e.target.value)} />
+              </div>
+              <div>
+                <label className="label">Catatan Penutupan <span className="text-red-400">*</span></label>
+                <textarea className="input" rows={3} required value={closeRemark} onChange={e => setCloseRemark(e.target.value)} placeholder="Catatan penutupan..." />
+              </div>
+            </div>
             <div className="flex justify-end gap-3 pt-4 border-t border-slate-800">
               <button type="button" className="btn-secondary" onClick={() => setCloseConfirm(false)}>Batal</button>
               <button type="submit" className="btn-success" disabled={actionLoading}>{actionLoading ? "Memproses..." : "Tutup Sewa"}</button>

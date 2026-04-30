@@ -263,6 +263,7 @@ export const warehouseRegistrationsApi = {
     api.post<{ data: WarehouseRegistrationRemark }>(`/warehouse-registrations/${id}/remarks`, { remark }),
   getAvailableChambers: (params: { warehouse_id: number; rent_start: string; rent_end: string }) =>
     api.get<{ data: WarehouseChamber[] }>("/warehouses/available-chambers", { params }),
+  deactivate: (id: number) => api.delete(`/warehouse-registrations/${id}`),
 };
 
 // ─── Warehouse Berita Acara ──────────────────────────────────────────────────

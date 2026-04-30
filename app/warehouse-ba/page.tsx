@@ -1,5 +1,5 @@
 "use client";
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import AppLayout from "@/components/layout/AppLayout";
 import PageHeader from "@/components/ui/PageHeader";
 import ConfirmDialog from "@/components/ui/ConfirmDialog";
@@ -21,7 +21,7 @@ export default function WarehouseBaPage() {
   const [cancelConfirm, setCancelConfirm] = useState(false);
   const [actionLoading, setActionLoading] = useState(false);
 
-  async function fetchData() {
+  const fetchData = useCallback(async () => {
     setLoading(true);
     try {
       const res = await warehouseBeritaAcarasApi.getAll({
@@ -33,9 +33,9 @@ export default function WarehouseBaPage() {
       if (err?.response?.status === 404) setData([]);
       else toast.error(getErrorMessage(err));
     } finally { setLoading(false); }
-  }
+  }, [dateFrom, dateTo]);
 
-  useEffect(() => { fetchData(); }, [dateFrom, dateTo]);
+  useEffect(() => { fetchData(); }, [fetchData]);
 
   const filtered = data.filter(b => [b.ba_number, b.freight_forwarder?.name, b.warehouse?.name]
     .some(v => v?.toLowerCase().includes(search.toLowerCase())));

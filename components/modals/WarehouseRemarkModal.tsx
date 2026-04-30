@@ -1,5 +1,5 @@
 "use client";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import Modal from "@/components/ui/Modal";
 import { warehouseRegistrationsApi } from "@/lib/api";
 import { formatDateTime, getErrorMessage } from "@/lib/utils";
@@ -19,53 +19,66 @@ export default function WarehouseRemarkModal({ open, onClose, registration, read
   const [newRemark, setNewRemark] = useState("");
   const [saving, setSaving] = useState(false);
 
-  async function fetchRemarks() {
-    if (!registration) return;
+  const fetchRemarks = useCallback(async () => {
     setLoading(true);
     try {
-      const res = await warehouseRegistrationsApi.getRemarks(registration.id);
+      const res = await warehouseRegistrationsApi.getRemarks(registration!.id);
       setRemarks(res.data.data || []);
-    } catch { toast.error("Gagal memuat catatan"); }
-    finally { setLoading(false); }
-  }
+    } catch (err) {
+      toast.error("Gagal memuat catatan");
+    } finally {
+      setLoading(false);
+    }
+  }, [registration]);
 
-  useEffect(() => { if (open) { fetchRemarks(); setNewRemark(""); } }, [open, registration]);
+  useEffect(() => {
+    if (open && registration) {
+      fetchRemarks();
+    }
+  }, [open, registration, fetchRemarks]);
 
   async function handleSubmit(e: React.FormEvent) {
-    e.preventDefault(); if (!newRemark.trim() || !registration) return;
+    e.preventDefault();
+    if (!newRemark.trim()) return;
     setSaving(true);
     try {
-      await warehouseRegistrationsApi.addRemark(registration.id, newRemark);
-      setNewRemark(""); fetchRemarks();
-    } catch (err) { toast.error(getErrorMessage(err)); }
-    finally { setSaving(false); }
+      await warehouseRegistrationsApi.addRemark(registration!.id, newRemark);
+      setNewRemark("");
+      fetchRemarks();
+    } catch (err) {
+      toast.error(getErrorMessage(err));
+    } finally {
+      setSaving(false);
+    }
   }
 
   return (
-    <Modal open={open} onClose={onClose} title="Catatan Sewa Warehouse" size="md">
-      <div className="space-y-4">
-        <div className="max-h-[300px] overflow-y-auto space-y-3 p-1">
-          {loading ? <p className="text-center text-slate-500 py-4">Memuat...</p>
-          : remarks.length === 0 ? <p className="text-center text-slate-500 py-4">Belum ada catatan</p>
-          : remarks.map((r, i) => (
-            <div key={i} className="bg-slate-800/50 p-3 rounded-lg border border-slate-700/50">
-              <div className="flex justify-between items-start mb-1">
-                <span className="text-xs font-semibold text-brand-400">{r.created_by?.name || "User"}</span>
-                <span className="text-[10px] text-slate-500">{formatDateTime(r.created_at)}</span>
-              </div>
-              <p className="text-sm text-slate-300 whitespace-pre-wrap">{r.remark}</p>
-            </div>
-          ))}
-        </div>
-
+    <Modal open={open} onClose={onClose} title="Riwayat Catatan Warehouse" size="md">
+      <div className="p-4 space-y-4">
         {!readOnly && (
-          <form onSubmit={handleSubmit} className="border-t border-slate-800 pt-4">
-            <textarea className="input mb-2" rows={2} placeholder="Tambah catatan baru..." required value={newRemark} onChange={e => setNewRemark(e.target.value)} />
+          <form onSubmit={handleSubmit} className="space-y-2">
+            <textarea className="input" rows={2} placeholder="Tambah catatan baru..." value={newRemark} onChange={e => setNewRemark(e.target.value)} />
             <div className="flex justify-end">
-              <button type="submit" className="btn-primary btn-sm" disabled={saving}>{saving ? "Menambah..." : "Tambah Catatan"}</button>
+              <button type="submit" className="btn btn-sm btn-primary" disabled={saving || !newRemark.trim()}>
+                {saving ? "Menyimpan..." : "Kirim Catatan"}
+              </button>
             </div>
           </form>
         )}
+
+        <div className="space-y-3 max-h-64 overflow-y-auto custom-scrollbar pr-2">
+          {loading ? <p className="text-center text-slate-500 py-4">Memuat...</p> : 
+           remarks.length === 0 ? <p className="text-center text-slate-600 py-4">Belum ada catatan</p> :
+           remarks.map(r => (
+            <div key={r.id} className="p-3 bg-slate-800/50 rounded-xl border border-slate-700/50 space-y-1">
+              <div className="flex justify-between text-[10px] font-bold text-slate-500 uppercase tracking-widest">
+                <span>{r.user?.name}</span>
+                <span>{formatDateTime(r.created_at)}</span>
+              </div>
+              <p className="text-sm text-slate-200">{r.remark}</p>
+            </div>
+          ))}
+        </div>
       </div>
     </Modal>
   );

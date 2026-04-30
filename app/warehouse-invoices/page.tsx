@@ -1,5 +1,5 @@
 "use client";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import AppLayout from "@/components/layout/AppLayout";
 import PageHeader from "@/components/ui/PageHeader";
 import ConfirmDialog from "@/components/ui/ConfirmDialog";
@@ -23,7 +23,7 @@ export default function WarehouseInvoicesPage() {
   const [cancelConfirm, setCancelConfirm] = useState(false);
   const [actionLoading, setActionLoading] = useState(false);
 
-  async function fetchData() {
+  const fetchData = useCallback(async () => {
     setLoading(true);
     try {
       const res = await warehouseInvoicesApi.getAll({ 
@@ -36,9 +36,9 @@ export default function WarehouseInvoicesPage() {
       if (err?.response?.status === 404) setData([]);
       else toast.error(getErrorMessage(err));
     } finally { setLoading(false); }
-  }
+  }, [dateFrom, dateTo, status]);
 
-  useEffect(() => { fetchData(); }, [dateFrom, dateTo, status]);
+  useEffect(() => { fetchData(); }, [fetchData]);
 
   const filtered = data.filter(i => [i.invoice_number, i.freight_forwarder?.name, i.warehouse?.name]
     .some(v => v?.toLowerCase().includes(search.toLowerCase())));
