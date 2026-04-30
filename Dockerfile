@@ -1,15 +1,21 @@
-# Tahap 1: Build aplikasi menggunakan Node.js
-FROM node:18-alpine as build
+FROM node:18-alpine AS builder
 WORKDIR /app
 COPY package*.json ./
-RUN npm install
+RUN npm ci
 COPY . .
-# Pastikan file .env sudah ada atau ter-copy sebelum command di bawah ini jalan
 RUN npm run build
 
-# Tahap 2: Serve aplikasi menggunakan Nginx (sangat ringan)
-FROM nginx:alpine
-# Ganti /app/dist dengan /app/build jika kamu pakai Create React App biasa
-COPY --from=build /app/dist /usr/share/nginx/html
-EXPOSE 80
-CMD ["nginx", "-g", "daemon off;"]
+FROM node:18-alpine AS runner
+WORKDIR /app
+ENV NODE_ENV=production
+ENV PORT=8089
+
+COPY --from=builder /app/.next ./.next
+COPY --from=builder /app/public ./public
+COPY --from=builder /app/package*.json ./
+COPY --from=builder /app/next.config.js ./
+
+RUN npm ci --only=production
+
+EXPOSE 8089
+CMD ["npm", "run", "start"]

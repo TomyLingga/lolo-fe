@@ -1,24 +1,12 @@
 version: '3.8'
-
-
-
 services:
-
-  lolo-frontend:
-
+  it-inv:
     build: .
-
-    container_name: lolo-fe-app
-
     ports:
-
-      - "8089:80" # Akses frontend di port 8089
-
-    restart: unless-stopped
-
-
-
-
-
-
-
+      - "8089:8089"    # keduanya 8084
+    restart: always
+    environment:
+      - NODE_ENV=production
+      - PORT=8089
+    volumes:
+      - ./.env.local:/app/.env.local
