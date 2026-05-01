@@ -17,14 +17,22 @@ export default function WarehouseDashboardPage() {
   async function fetchData() {
     setLoading(true);
     try {
-      const [mapRes, actRes] = await Promise.all([
-        dashboardApi.getWarehouseMap(),
-        warehouseRegistrationsApi.getAll({ date_from: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10) })
-      ]);
-      setMapData(mapRes.data.data || []);
-      setRecentActivities(actRes.data.data?.slice(0, 5) || []);
-    } catch {
-      toast.error("Gagal memuat data dashboard");
+      const oneYearAgo = new Date();
+      oneYearAgo.setFullYear(oneYearAgo.getFullYear() - 1);
+      const dateFrom = oneYearAgo.toISOString().slice(0, 10);
+
+      // Use independent handling so one failure doesn't block the other
+      const mapPromise = dashboardApi.getWarehouseMap()
+        .then(res => setMapData(res.data.data || []))
+        .catch(err => console.error("Failed to load map data:", err));
+
+      const activityPromise = warehouseRegistrationsApi.getAll({ date_from: dateFrom })
+        .then(res => setRecentActivities(res.data.data?.slice(0, 10) || []))
+        .catch(err => console.error("Failed to load activity data:", err));
+
+      await Promise.allSettled([mapPromise, activityPromise]);
+    } catch (error) {
+      console.error("Dashboard unexpected error:", error);
     } finally {
       setLoading(false);
     }
@@ -37,13 +45,44 @@ export default function WarehouseDashboardPage() {
   const occupiedChambers = mapData.reduce((sum, w) => sum + w.occupied_count, 0);
   const occupancyRate = totalChambers > 0 ? (occupiedChambers / totalChambers) * 100 : 0;
 
+  // Hitung proyeksi pendapatan dari chamber yang sedang aktif
+  const estimatedRevenue = mapData.reduce((sum, w) => {
+    return sum + (w.chambers?.reduce((cSum: number, c: any) =>
+      cSum + (parseFloat(c.active_registration?.total_rent_cost || 0)), 0) || 0);
+  }, 0);
+
+  // Pie Chart Component for Occupancy
+  const OccupancyPie = ({ rate }: { rate: number }) => {
+    const radius = 32;
+    const circumference = 2 * Math.PI * radius;
+    const offset = circumference - (rate / 100) * circumference;
+
+    return (
+      <div className="relative flex items-center justify-center w-24 h-24">
+        <svg className="w-full h-full transform -rotate-90">
+          <circle cx="48" cy="48" r={radius} stroke="currentColor" strokeWidth="6" fill="transparent" className="text-slate-800" />
+          <circle
+            cx="48" cy="48" r={radius} stroke="currentColor" strokeWidth="6" fill="transparent"
+            strokeDasharray={circumference}
+            strokeDashoffset={offset}
+            strokeLinecap="round"
+            className="text-brand-500 transition-all duration-1000 ease-out"
+          />
+        </svg>
+        <div className="absolute text-center">
+          <span className="text-sm font-bold text-white leading-none">{rate.toFixed(1)}%</span>
+        </div>
+      </div>
+    );
+  };
+
   return (
     <AppLayout>
-      <div className="p-6 space-y-6 bg-slate-950 min-h-screen">
+      <div className="p-4 space-y-4 bg-slate-950 min-h-screen">
         <div className="flex flex-col md:flex-row md:items-end justify-between gap-4">
-          <div className="flex items-center gap-4">
-            <h1 className="text-2xl font-bold text-white tracking-tight flex items-center gap-2">
-              <svg className="w-8 h-8 text-brand-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m10 0h2a2 2 0 002-2v-5a2 2 0 00-2-2H3a2 2 0 00-2 2v5a2 2 0 002 2h2" /></svg>
+          <div className="flex items-center gap-3">
+            <h1 className="text-lg font-bold text-white tracking-tight flex items-center gap-2">
+              <svg className="w-6 h-6 text-brand-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m10 0h2a2 2 0 002-2v-5a2 2 0 00-2-2H3a2 2 0 00-2 2v5a2 2 0 002 2h2" /></svg>
               Warehouse Monitor
             </h1>
           </div>
@@ -58,27 +97,62 @@ export default function WarehouseDashboardPage() {
           images={["/images/photo2.jpg", "/images/photo3.jpg", "/images/photo1.jpg"]}
           title="Modern Warehouse Infrastructure"
           subtitle="Facility Management"
-          className="h-80 rounded-2xl border border-slate-800 shadow-2xl"
+          className="h-80 md:h-80 rounded-2xl border border-slate-800 shadow-2xl"
+          showIndicators={false}
+          objectPosition="50% 60%"
+          contentClassName="bottom-4 left-6"
         />
 
         {/* Stats Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-          {[
-            { label: "Gudang Aktif", value: totalWarehouses, icon: "M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16", color: "text-blue-400" },
-            { label: "Total Chamber", value: totalChambers, icon: "M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6z", color: "text-indigo-400" },
-            { label: "Terisi", value: occupiedChambers, icon: "M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z", color: "text-emerald-400" },
-            { label: "Okupansi", value: `${occupancyRate.toFixed(1)}%`, icon: "M13 7h8m0 0v8m0-8l-8 8-4-4-6 6", color: "text-amber-400" },
-          ].map((s, i) => (
-            <div key={i} className="bg-slate-900 border border-slate-800 p-5 rounded-2xl flex items-center gap-4 shadow-xl">
-              <div className={cn("w-12 h-12 rounded-xl flex items-center justify-center bg-white/5", s.color)}>
-                <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d={s.icon} /></svg>
-              </div>
-              <div>
-                <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">{s.label}</p>
-                <p className="text-2xl font-bold text-white leading-tight">{loading ? "..." : s.value}</p>
-              </div>
+        <div className="grid grid-cols-1 md:grid-cols-3 xl:grid-cols-5 gap-4">
+          <div className="bg-slate-900 border border-slate-800 p-3 rounded-2xl flex items-center gap-3 shadow-xl">
+            <div className="w-10 h-10 rounded-xl flex items-center justify-center bg-white/5 text-blue-400">
+              <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16" /></svg>
             </div>
-          ))}
+            <div>
+              <p className="text-[8px] font-bold text-slate-500 uppercase tracking-widest">Gudang Aktif</p>
+              <p className="text-xl font-bold text-white leading-tight">{loading ? "..." : totalWarehouses}</p>
+            </div>
+          </div>
+
+          <div className="bg-slate-900 border border-slate-800 p-3 rounded-2xl flex items-center gap-3 shadow-xl">
+            <div className="w-10 h-10 rounded-xl flex items-center justify-center bg-white/5 text-indigo-400">
+              <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6z" /></svg>
+            </div>
+            <div>
+              <p className="text-[8px] font-bold text-slate-500 uppercase tracking-widest">Total Chamber</p>
+              <p className="text-xl font-bold text-white leading-tight">{loading ? "..." : totalChambers}</p>
+            </div>
+          </div>
+
+          <div className="bg-slate-900 border border-slate-800 p-3 rounded-2xl flex items-center gap-3 shadow-xl">
+            <div className="w-10 h-10 rounded-xl flex items-center justify-center bg-white/5 text-emerald-400">
+              <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+            </div>
+            <div>
+              <p className="text-[8px] font-bold text-slate-500 uppercase tracking-widest">Terisi</p>
+              <p className="text-xl font-bold text-white leading-tight">{loading ? "..." : `${occupiedChambers}/${totalChambers}`}</p>
+            </div>
+          </div>
+
+          <div className="bg-slate-900 border border-slate-800 p-3 rounded-2xl flex items-center gap-3 shadow-xl">
+            <div className="w-10 h-10 rounded-xl flex items-center justify-center bg-white/5 text-amber-400">
+              <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+            </div>
+            <div>
+              <p className="text-[8px] font-bold text-slate-500 uppercase tracking-widest">Proyeksi Pendapatan</p>
+              <p className="text-base font-bold text-white leading-tight">{loading ? "..." : formatCurrency(estimatedRevenue)}</p>
+            </div>
+          </div>
+
+          <div className="bg-slate-900 border border-slate-800 p-3 rounded-2xl flex items-center justify-between shadow-xl overflow-hidden relative group">
+            <div className="z-10">
+              <p className="text-[8px] font-bold text-slate-500 uppercase tracking-widest mb-0.5">Okupansi</p>
+            </div>
+            <div className="flex-shrink-0">
+              {loading ? <div className="w-12 h-12 rounded-full border-2 border-slate-800 animate-pulse" /> : <div className="scale-75 origin-right"><OccupancyPie rate={occupancyRate} /></div>}
+            </div>
+          </div>
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -90,8 +164,17 @@ export default function WarehouseDashboardPage() {
                 Floor Plan Status
               </h2>
               <div className="space-y-8">
-                {loading ? <p className="text-center py-12 text-slate-600">Loading map...</p>
-                  : mapData.map((w) => (
+                {loading ? (
+                  <p className="text-center py-12 text-slate-600">Loading map...</p>
+                ) : mapData.length === 0 ? (
+                  <div className="text-center py-16 space-y-3">
+                    <div className="w-16 h-16 bg-slate-800 rounded-full flex items-center justify-center mx-auto text-slate-600">
+                      <svg className="w-8 h-8" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m10 0h2a2 2 0 002-2v-5a2 2 0 00-2-2H3a2 2 0 00-2 2v5a2 2 0 002 2h2" /></svg>
+                    </div>
+                    <p className="text-slate-500 text-sm">Belum ada warehouse terdaftar</p>
+                  </div>
+                ) : (
+                  mapData.map((w) => (
                     <div key={w.id} className="space-y-3">
                       <div className="flex justify-between items-end border-b border-slate-800 pb-2">
                         <h3 className="text-white font-bold text-base">{w.name}</h3>
@@ -120,7 +203,8 @@ export default function WarehouseDashboardPage() {
                         ))}
                       </div>
                     </div>
-                  ))}
+                  ))
+                )}
               </div>
             </div>
           </div>
@@ -133,8 +217,14 @@ export default function WarehouseDashboardPage() {
                 Activity Timeline
               </h2>
               <div className="relative pl-6 space-y-8 before:absolute before:left-2 before:top-2 before:bottom-2 before:w-px before:bg-slate-800">
-                {loading ? <p className="text-center py-12 text-slate-600">Loading activities...</p>
-                  : recentActivities.map((act, i) => (
+                {loading ? (
+                  <p className="text-center py-12 text-slate-600">Loading activities...</p>
+                ) : recentActivities.length === 0 ? (
+                  <div className="py-12 text-center">
+                    <p className="text-slate-600 text-xs italic">Belum ada aktivitas terekam</p>
+                  </div>
+                ) : (
+                  recentActivities.map((act, i) => (
                     <div key={act.id} className="relative">
                       <div className={cn(
                         "absolute -left-[22px] top-1 w-4 h-4 rounded-full border-4 border-slate-900 z-10",
@@ -142,10 +232,15 @@ export default function WarehouseDashboardPage() {
                       )} />
                       <div className="space-y-1">
                         <div className="flex justify-between items-center">
-                          <span className="text-[10px] font-bold text-slate-500 uppercase tracking-tighter">
+                          <span className={cn(
+                            "text-[9px] font-black px-2 py-0.5 rounded-full uppercase tracking-tighter",
+                            act.record_status === "ACTIVE" ? "bg-emerald-500/20 text-emerald-400 border border-emerald-500/30" : "bg-slate-800 text-slate-500 border border-slate-700"
+                          )}>
                             {act.record_status === "ACTIVE" ? "NEW RENT" : "CLOSED RENT"}
                           </span>
-                          <span className="text-[10px] text-slate-600 font-mono">{formatDate(act.created_at)}</span>
+                          <span className="text-[10px] text-slate-600 font-mono">
+                            {formatDate(act.rent_start)} - {formatDate(act.rent_end)}
+                          </span>
                         </div>
                         <p className="text-sm text-white font-semibold">{act.freight_forwarder?.name}</p>
                         <div className="flex items-center gap-2 text-[11px] text-slate-400 bg-slate-800/50 p-2 rounded-lg border border-slate-700/30">
@@ -164,7 +259,8 @@ export default function WarehouseDashboardPage() {
                         </div>
                       </div>
                     </div>
-                  ))}
+                  ))
+                )}
               </div>
               <div className="mt-8 pt-4 border-t border-slate-800 text-center">
                 <Link href="/warehouse-rent" className="text-[10px] font-bold text-slate-500 uppercase hover:text-brand-400 transition-colors flex items-center justify-center gap-2 group">

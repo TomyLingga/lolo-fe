@@ -68,7 +68,7 @@ export default function WarehouseRegistrationFormModal({ open, onClose, registra
   }, [formData.warehouse_id, formData.rent_start, formData.rent_end]);
 
   useEffect(() => {
-    if (formData.warehouse_id && formData.rent_start && formData.rent_end) {
+    if (formData.warehouse_id) {
       loadAvailableChambers();
     } else {
       setChambers([]);
@@ -145,9 +145,19 @@ export default function WarehouseRegistrationFormModal({ open, onClose, registra
           </div>
           <div className="md:col-span-2">
             <label className="label">Chamber <span className="text-red-400">*</span></label>
-            <select className="input" required value={formData.chamber_id} onChange={e => setFormData({ ...formData, chamber_id: e.target.value })} disabled={!formData.warehouse_id || chambers.length === 0}>
-              <option value="">{chambers.length === 0 ? "Tidak ada chamber tersedia" : "Pilih Chamber"}</option>
-              {chambers.map(c => <option key={c.id} value={c.id}>{c.code} ({c.warehouse?.name})</option>)}
+            <select 
+              className="input" 
+              required 
+              value={formData.chamber_id} 
+              onChange={e => setFormData({ ...formData, chamber_id: e.target.value })} 
+              disabled={!formData.warehouse_id || (chambers.length === 0 && !loading)}
+            >
+              <option value="">{loading ? "Memuat chamber..." : chambers.length === 0 ? "Tidak ada chamber tersedia" : "Pilih Chamber"}</option>
+              {chambers.map(c => (
+                <option key={c.id} value={c.id} disabled={!c.is_available}>
+                  {c.code} {c.name ? `- ${c.name}` : ""} {!c.is_available ? "(Terpakai/Booking)" : ""}
+                </option>
+              ))}
             </select>
           </div>
           <div className="md:col-span-2">

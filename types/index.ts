@@ -128,7 +128,7 @@ export interface Registration {
   cargo_status_id: number;
   package_id: number;
   no_do_jo?: string;
-  shipper_tenant?: string;
+  shipper_tenant_id?: number;
   vehicle_type?: string;
   vehicle_number?: string;
   operator_name?: string;
@@ -137,6 +137,7 @@ export interface Registration {
   created_at: string;
   closed_at?: string;
   freight_forwarder?: FreightForwarder;
+  shipper_tenant?: FreightForwarder;
   container_size?: ContainerSize;
   container_type?: ContainerType;
   cargo_status?: CargoStatus;
@@ -256,6 +257,7 @@ export interface WarehouseChamber {
   length_m?: number;
   width_m?: number;
   area_m2?: number;
+  is_available?: boolean;
   is_active: boolean;
   warehouse?: Warehouse;
 }

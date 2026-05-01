@@ -184,11 +184,11 @@ export default function WarehouseInvoiceFormModal({ open, onClose, onSaved }: Pr
                 <div><label className="label text-[10px]">Nama Penandatangan</label><input className="input text-xs" value={form.signatory_name} onChange={e => setForm(p => ({ ...p, signatory_name: e.target.value }))} /></div>
                 <div><label className="label text-[10px]">Jabatan</label><input className="input text-xs" value={form.signatory_position} onChange={e => setForm(p => ({ ...p, signatory_position: e.target.value }))} /></div>
                 <div className="pt-2 border-t border-slate-800 space-y-2">
-                  <div><label className="label text-[10px]">Bank (Auto)</label><input className="input text-xs bg-slate-900/50" readOnly value={firstBa?.bank_name || "-"} /></div>
+                  <div><label className="label text-[10px]">Bank</label><input className="input text-xs bg-slate-900/50" readOnly value={firstBa?.bank_name || "-"} /></div>
                   <div><label className="label text-[10px]">SWIFT Code</label><input className="input text-xs" value={form.swift_code} onChange={e => setForm(p => ({ ...p, swift_code: e.target.value }))} placeholder="BMRIIDJA" /></div>
                   <div className="grid grid-cols-2 gap-2">
-                    <div><label className="label text-[10px]">Nama Rekening (Auto)</label><input className="input text-xs bg-slate-900/50" readOnly value={firstBa?.bank_account_name || "-"} /></div>
-                    <div><label className="label text-[10px]">No. Rekening (Auto)</label><input className="input text-xs bg-slate-900/50" readOnly value={firstBa?.bank_account_number || "-"} /></div>
+                    <div><label className="label text-[10px]">Nama Rekening</label><input className="input text-xs bg-slate-900/50" readOnly value={firstBa?.bank_account_name || "-"} /></div>
+                    <div><label className="label text-[10px]">No. Rekening</label><input className="input text-xs bg-slate-900/50" readOnly value={firstBa?.bank_account_number || "-"} /></div>
                   </div>
                 </div>
               </div>

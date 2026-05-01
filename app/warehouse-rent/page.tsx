@@ -158,8 +158,21 @@ export default function WarehouseRentPage() {
                         </td>
                         <td className="px-4 py-3 text-brand-400 font-semibold">{formatCurrency(reg.total_rent_cost)}</td>
                         <td className="px-4 py-3">
-                          <span className={cn("badge", reg.record_status === "ACTIVE" ? "badge-green" : "badge-slate")}>{reg.record_status}</span>
-                          {reg.invoiced && <span className="badge badge-blue ml-1">Invoiced</span>}
+                          <div className="flex flex-col gap-1.5 items-start">
+                            <span className={cn(
+                              "text-[10px] font-black px-2 py-0.5 rounded-md uppercase tracking-wider border",
+                              reg.record_status === "ACTIVE" 
+                                ? "bg-emerald-500/10 text-emerald-400 border-emerald-500/30" 
+                                : "bg-slate-800 text-slate-500 border-slate-700"
+                            )}>
+                              {reg.record_status}
+                            </span>
+                            {reg.invoiced && (
+                              <span className="text-[10px] font-black px-2 py-0.5 rounded-md uppercase tracking-wider bg-blue-500/10 text-blue-400 border border-blue-500/30">
+                                Invoiced
+                              </span>
+                            )}
+                          </div>
                         </td>
                         <td className="px-4 py-3">
                           <div className="flex items-center gap-1">

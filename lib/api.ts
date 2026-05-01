@@ -40,6 +40,7 @@ export const yardsApi = {
 export const blocksApi = {
   getAll: () => api.get<{ data: Block[] }>("/master/blocks"),
   getById: (id: number) => api.get<{ data: Block }>(`/master/blocks/${id}`),
+  getOccupiedSlots: (blockId: number) => api.get<{ data: { pos_length: number; pos_width: number; pos_height: number }[] }>(`/master/blocks/${blockId}/occupied-slots`),
   create: (data: Partial<Block>) => api.post<{ data: Block }>("/master/blocks", data),
   update: (id: number, data: Partial<Block>) => api.put<{ data: Block }>(`/master/blocks/${id}`, data),
   deactivate: (id: number) => api.delete(`/master/blocks/${id}`),
@@ -205,11 +206,31 @@ export interface YardMapYard {
   blocks: YardMapBlock[];
 }
 
+export interface DashboardActivity {
+  type: 'LOLO' | 'STORAGE';
+  operation?: string;
+  container_number: string;
+  ff?: string;
+  tenant?: string;
+  vehicle?: string;
+  time: string;
+  operator: string;
+  start_date?: string;
+  location?: string;
+}
+
 export const dashboardApi = {
-  getYardMap: (container_number?: string) =>
-    api.get<{ data: YardMapYard[] }>("/dashboard/yard-map", {
-      params: container_number ? { container_number } : undefined,
-    }),
+  getYardMap: () => api.get<{ 
+    data: { 
+      yards: YardMapYard[];
+      stats: {
+        monthly_in: number;
+        monthly_out: number;
+        projected_revenue: number;
+      };
+      activities: DashboardActivity[];
+    } 
+  }>("/dashboard/yard-map"),
   getWarehouseMap: () =>
     api.get<{ data: any[] }>("/dashboard/warehouse-map"),
 };

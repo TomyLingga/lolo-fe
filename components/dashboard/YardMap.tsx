@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { createPortal } from "react-dom";
 import { YardMapBlock, YardMapYard } from "@/lib/api";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -17,6 +18,17 @@ interface SlotGridProps {
 
 function SlotGridPanel({ block, yardName, onClose }: SlotGridProps) {
   const [selectedSlot, setSelectedSlot] = useState<SlotKey | null>(null);
+  const [mounted, setMounted] = useState(false);
+
+  // Lock body scroll & ensure portal mounting
+  useEffect(() => {
+    setMounted(true);
+    const originalStyle = window.getComputedStyle(document.body).overflow;
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.body.style.overflow = originalStyle;
+    };
+  }, []);
 
   // Build lookup: {`l-w-h` → registrations[]}
   const slotMap = new Map<string, typeof block.registrations>();
@@ -30,14 +42,17 @@ function SlotGridPanel({ block, yardName, onClose }: SlotGridProps) {
   const slotKey = selectedSlot ? `${selectedSlot.l}-${selectedSlot.w}-${selectedSlot.h}` : null;
   const slotRegs = slotKey ? (slotMap.get(slotKey) ?? []) : [];
 
-  return (
+  if (!mounted) return null;
+
+  return createPortal(
     <div
-      className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/70 backdrop-blur-sm p-4"
+      className="fixed inset-0 z-[9999] flex items-center justify-center p-4 sm:p-6"
+      style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0 }}
       onClick={onClose}
-      style={{ animation: "fadeIn 0.15s ease-out" }}
     >
+      <div className="absolute inset-0 bg-slate-950/90 backdrop-blur-md" />
       <div
-        className="bg-slate-900 border border-slate-700 rounded-2xl w-full max-w-2xl max-h-[90vh] overflow-hidden flex flex-col"
+        className="relative z-10 bg-slate-900 border border-slate-700 rounded-2xl w-full max-w-2xl max-h-[90vh] overflow-hidden flex flex-col shadow-2xl"
         style={{ animation: "slideUp 0.2s ease-out" }}
         onClick={(e) => e.stopPropagation()}
       >
@@ -129,9 +144,9 @@ function SlotGridPanel({ block, yardName, onClose }: SlotGridProps) {
                 <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-3">
                   L{selectedSlot.l} W{selectedSlot.w} — Isi Stack
                 </p>
-                {/* Show all heights at this L-W */}
+                {/* Show all heights at this L-W — Reversed so highest is on top */}
                 {Array.from({ length: block.max_height }, (_, hi) => {
-                  const h = hi + 1;
+                  const h = block.max_height - hi;
                   const key = `${selectedSlot.l}-${selectedSlot.w}-${h}`;
                   const regs = slotMap.get(key) ?? [];
                   return (
@@ -141,7 +156,7 @@ function SlotGridPanel({ block, yardName, onClose }: SlotGridProps) {
                         ? "bg-emerald-500/10 border-emerald-500/30"
                         : "bg-slate-800/30 border-slate-700/30",
                     ].join(" ")}>
-                      <p className="text-xs text-slate-500 mb-1.5 font-medium">H{h} (tingkat {h})</p>
+                      <p className="text-[10px] text-slate-500 mb-1 font-bold uppercase tracking-wider">Level {h}</p>
                       {regs.length === 0 ? (
                         <p className="text-xs text-slate-600 italic">Kosong</p>
                       ) : regs.map((reg) => (
@@ -171,7 +186,8 @@ function SlotGridPanel({ block, yardName, onClose }: SlotGridProps) {
           <span>Kapasitas: <span className="text-white font-semibold">{block.capacity}</span> slot</span>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 }
 
@@ -280,17 +296,6 @@ function YardSlide({ yard, onBlockClick }: YardSlideProps) {
   );
 }
 
-// ─── Legend ───────────────────────────────────────────────────────────────────
-
-function Legend({ searched }: { searched: boolean }) {
-  return (
-    <div className="flex flex-wrap items-center gap-4 text-xs text-slate-500">
-      <div className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-full bg-slate-600" /><span>Kosong</span></div>
-      <div className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-full bg-emerald-400" /><span>Ada kontainer OPEN</span></div>
-      {searched && <div className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-full bg-amber-400" /><span>Hasil pencarian</span></div>}
-    </div>
-  );
-}
 
 // ─── Main Component (props-driven — no own fetch) ─────────────────────────────
 
@@ -357,10 +362,6 @@ export default function YardMap({ yards, loading, error, searchQuery, onRetry }:
 
   return (
     <>
-      {/* Legend */}
-      <div className="flex justify-end mb-4">
-        <Legend searched={!!searchQuery} />
-      </div>
 
       {/* Vertical list of Yard slides */}
       <div className="flex flex-col">

@@ -43,6 +43,7 @@ export default function RegistrationsPage() {
   const [colFilters, setColFilters] = useState({
     container_number: "",
     ff: "",
+    tenant: "",
     no_do_jo: "",
   });
 
@@ -91,7 +92,7 @@ export default function RegistrationsPage() {
   }, [tab, dateFrom, dateTo]);
 
   let filtered = search
-    ? data.filter(r => [r.container_number, (r as any).freight_forwarders?.name, r.no_do_jo, r.shipper_tenant]
+    ? data.filter(r => [r.container_number, (r as any).freight_forwarders?.name, r.no_do_jo, r.shipper_tenant?.name]
       .some(v => v?.toLowerCase().includes(search.toLowerCase())))
     : data;
 
@@ -100,6 +101,9 @@ export default function RegistrationsPage() {
   }
   if (colFilters.ff) {
     filtered = filtered.filter(r => (r as any).freight_forwarders?.name?.toLowerCase().includes(colFilters.ff.toLowerCase()));
+  }
+  if (colFilters.tenant) {
+    filtered = filtered.filter(r => (r as any).shipper_tenant?.name?.toLowerCase().includes(colFilters.tenant.toLowerCase()));
   }
   if (colFilters.no_do_jo) {
     filtered = filtered.filter(r => r.no_do_jo?.toLowerCase().includes(colFilters.no_do_jo.toLowerCase()));
@@ -111,6 +115,7 @@ export default function RegistrationsPage() {
       let valB = "";
       if (sortCol === "container_number") { valA = a.container_number || ""; valB = b.container_number || ""; }
       else if (sortCol === "ff") { valA = (a as any).freight_forwarders?.name || ""; valB = (b as any).freight_forwarders?.name || ""; }
+      else if (sortCol === "tenant") { valA = (a as any).shipper_tenant?.name || ""; valB = (b as any).shipper_tenant?.name || ""; }
       else if (sortCol === "no_do_jo") { valA = a.no_do_jo || ""; valB = b.no_do_jo || ""; }
       else if (sortCol === "size") { valA = (a as any).size?.code || ""; valB = (b as any).size?.code || ""; }
       else if (sortCol === "type") { valA = (a as any).type?.code || ""; valB = (b as any).type?.code || ""; }
@@ -137,19 +142,22 @@ export default function RegistrationsPage() {
       return;
     }
 
-    const regData = filtered.map(r => ({
-      "ID": r.id,
-      "No. Container": r.container_number,
-      "Paket": (r as any).package?.code || "-",
-      "Freight Forwarder": (r as any).freight_forwarders?.name || "-",
-      "No. DO/JO": r.no_do_jo || "-",
-      "Ukuran": (r as any).size?.description || "-",
-      "Tipe": (r as any).type?.description || "-",
-      "Shipper/Tenant": r.shipper_tenant || "-",
-      "Status Record": r.record_status,
-      "Tgl Masuk": formatDateTime(r.created_at),
-      "Tgl Keluar": r.closed_at ? formatDateTime(r.closed_at) : "-",
-    }));
+    const regData = filtered.map(r => {
+      const loloRecs = (r as any).lolo_records || [];
+      return {
+        "ID": r.id,
+        "No. Container": r.container_number,
+        "Paket": (r as any).package?.code || "-",
+        "Freight Forwarder": (r as any).freight_forwarders?.name || "-",
+        "Tenant": (r as any).shipper_tenant?.name || "-",
+        "No. DO/JO": r.no_do_jo || "-",
+        "Ukuran": (r as any).size?.description || "-",
+        "Tipe": (r as any).type?.description || "-",
+        "Status Record": r.record_status,
+        "Tgl Masuk": formatDateTime(loloRecs.find((l: any) => l.operation_type === "LIFT_OFF")?.lolo_at || r.created_at),
+        "Tgl Keluar": [...loloRecs].reverse().find((l: any) => l.operation_type === "LIFT_ON")?.lolo_at ? formatDateTime([...loloRecs].reverse().find((l: any) => l.operation_type === "LIFT_ON")?.lolo_at) : "-",
+      };
+    });
 
     const loloData: any[] = [];
     const storageData: any[] = [];
@@ -329,13 +337,16 @@ export default function RegistrationsPage() {
                   <th className="px-4 py-3 text-left table-header whitespace-nowrap cursor-pointer select-none" onClick={() => handleSort("ff")}>
                     Freight Forwarder {renderSortIcon("ff")}
                   </th>
+                  <th className="px-4 py-3 text-left table-header whitespace-nowrap cursor-pointer select-none" onClick={() => handleSort("tenant")}>
+                    Tenant {renderSortIcon("tenant")}
+                  </th>
                   <th className="px-4 py-3 text-left table-header whitespace-nowrap cursor-pointer select-none" onClick={() => handleSort("no_do_jo")}>
                     No. DO/JO {renderSortIcon("no_do_jo")}
                   </th>
                   <th className="px-4 py-3 text-left table-header whitespace-nowrap">
-                    <span className="cursor-pointer select-none" onClick={() => handleSort("size")}>Ukuran{renderSortIcon("size")}</span>
+                    <span className="cursor-pointer select-none" onClick={() => handleSort("size")}>SZ{renderSortIcon("size")}</span>
                     <span className="mx-1">/</span>
-                    <span className="cursor-pointer select-none" onClick={() => handleSort("type")}>Tipe{renderSortIcon("type")}</span>
+                    <span className="cursor-pointer select-none" onClick={() => handleSort("type")}>TP{renderSortIcon("type")}</span>
                   </th>
                   <th className="px-4 py-3 text-left table-header whitespace-nowrap">Status</th>
                   <th className="px-4 py-3 text-left table-header whitespace-nowrap">Posisi</th>
@@ -349,6 +360,9 @@ export default function RegistrationsPage() {
                   </td>
                   <td className="px-2 py-1">
                     <input className="input py-1 text-xs w-full bg-slate-800/50 border-slate-700" placeholder="Filter..." value={colFilters.ff} onChange={e => setColFilters(p => ({...p, ff: e.target.value}))} />
+                  </td>
+                  <td className="px-2 py-1">
+                    <input className="input py-1 text-xs w-full bg-slate-800/50 border-slate-700" placeholder="Filter..." value={colFilters.tenant} onChange={e => setColFilters(p => ({...p, tenant: e.target.value}))} />
                   </td>
                   <td className="px-2 py-1">
                     <input className="input py-1 text-xs w-full bg-slate-800/50 border-slate-700" placeholder="Filter..." value={colFilters.no_do_jo} onChange={e => setColFilters(p => ({...p, no_do_jo: e.target.value}))} />
@@ -389,24 +403,28 @@ export default function RegistrationsPage() {
                       <td className="px-4 py-3 text-slate-300">
                         {(reg as any).freight_forwarders?.name || "-"}
                       </td>
+                      <td className="px-4 py-3 text-slate-300">
+                        {(reg as any).shipper_tenant?.name || "-"}
+                      </td>
                       <td className="px-4 py-3 text-slate-400">{reg.no_do_jo || "-"}</td>
                       <td className="px-4 py-3">
-                        <span className="text-slate-300">{(reg as any).size?.code}</span>
-                        <span className="text-slate-600 mx-1">/</span>
-                        <span className="text-slate-300">{(reg as any).type?.code}</span>
+                        <div className="flex items-center gap-1.5 text-xs font-bold">
+                          <span className="text-white">{(reg as any).size?.code}</span>
+                          <span className="text-slate-600">/</span>
+                          <span className="text-brand-400">{(reg as any).type?.code}</span>
+                        </div>
                       </td>
                       <td className="px-4 py-3">
-                        <span className={cn("badge", reg.record_status === "OPEN" ? "badge-green" : "badge-slate")}>{reg.record_status}</span>
-                        {actualLastLolo && (
-                          <span
-                            className={cn(
-                              "badge ml-1 w-[40px] text-center",
-                              actualLastLolo === "LIFT_ON" ? "badge-amber" : "badge-blue"
-                            )}
-                          >
-                            {actualLastLolo === "LIFT_ON" ? "ON" : "OFF"}
+                        <div className="flex flex-col gap-1">
+                          <span className={cn("badge text-[10px] py-0.5 px-1.5 w-fit", reg.record_status === "OPEN" ? "badge-green" : "badge-slate")}>
+                            {reg.record_status}
                           </span>
-                        )}
+                          {actualLastLolo && (
+                            <span className={cn("badge text-[10px] py-0.5 px-1.5 w-fit", actualLastLolo === "LIFT_ON" ? "badge-amber" : "badge-blue")}>
+                              {actualLastLolo === "LIFT_ON" ? "LIFT ON" : "LIFT OFF"}
+                            </span>
+                          )}
+                        </div>
                       </td>
                       <td className="px-4 py-3 text-slate-400 text-xs">
                         {(() => {

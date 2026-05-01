@@ -4,6 +4,7 @@ import Modal from "@/components/ui/Modal";
 import { registrationsApi, yardsApi, blocksApi, freightForwardersApi, containerSizesApi, containerTypesApi, cargoStatusesApi, packagesApi } from "@/lib/api";
 import { getErrorMessage } from "@/lib/utils";
 import toast from "react-hot-toast";
+import SearchableSelect from "@/components/ui/SearchableSelect";
 import type { Registration, Yard, Block, FreightForwarder, ContainerSize, ContainerType, CargoStatus, Package } from "@/types";
 
 interface Props {
@@ -33,10 +34,12 @@ export default function RegistrationFormModal({ open, onClose, onSaved, registra
   const [types, setTypes] = useState<ContainerType[]>([]);
   const [statuses, setStatuses] = useState<CargoStatus[]>([]);
   const [packages, setPackages] = useState<Package[]>([]);
+  const [occupiedSlots, setOccupiedSlots] = useState<{ pos_length: number; pos_width: number; pos_height: number }[]>([]);
+  const [slotsLoading, setSlotsLoading] = useState(false);
 
   const [form, setForm] = useState({
     freight_forwarder_id: "", package_id: "", container_number: "", container_size_id: "",
-    container_type_id: "", cargo_status_id: "", no_do_jo: "", shipper_tenant: "",
+    container_type_id: "", cargo_status_id: "", no_do_jo: "", shipper_tenant_id: "",
     vehicle_type: "", vehicle_number: "", remark: "",
     lolo_at: "", yard_id: "", block_id: "", pos_length: "", pos_width: "", pos_height: "", moved_at: "",
   });
@@ -70,14 +73,14 @@ export default function RegistrationFormModal({ open, onClose, onSaved, registra
             container_type_id: String(registration.container_type_id),
             cargo_status_id: String(registration.cargo_status_id),
             no_do_jo: registration.no_do_jo || "",
-            shipper_tenant: registration.shipper_tenant || "",
+            shipper_tenant_id: registration.shipper_tenant_id ? String(registration.shipper_tenant_id) : "",
             vehicle_type: "", vehicle_number: "", remark: "",
             lolo_at: "", yard_id: "", block_id: "", pos_length: "", pos_width: "", pos_height: "", moved_at: "",
           });
         } else {
           setForm({
             freight_forwarder_id: "", package_id: "", container_number: "", container_size_id: "", container_type_id: "",
-            cargo_status_id: "", no_do_jo: "", shipper_tenant: "", vehicle_type: "", vehicle_number: "",
+            cargo_status_id: "", no_do_jo: "", shipper_tenant_id: "", vehicle_type: "", vehicle_number: "",
             remark: "", lolo_at: "", yard_id: "", block_id: "", pos_length: "", pos_width: "", pos_height: "", moved_at: "",
           });
           setBlocks([]);
@@ -103,6 +106,21 @@ export default function RegistrationFormModal({ open, onClose, onSaved, registra
     }
   }
 
+  async function handleBlockChange(blockId: string) {
+    setForm(p => ({ ...p, block_id: blockId, pos_length: "", pos_width: "", pos_height: "" }));
+    setOccupiedSlots([]);
+    if (!blockId) return;
+    setSlotsLoading(true);
+    try {
+      const res = await blocksApi.getOccupiedSlots(Number(blockId));
+      setOccupiedSlots(res.data.data);
+    } catch {
+      toast.error("Gagal memuat data slot");
+    } finally {
+      setSlotsLoading(false);
+    }
+  }
+
   const set = (k: string) => (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) =>
     setForm(p => ({ ...p, [k]: e.target.value }));
 
@@ -112,7 +130,7 @@ export default function RegistrationFormModal({ open, onClose, onSaved, registra
     try {
       if (editing) {
         await registrationsApi.update(registration!.id, {
-          no_do_jo: form.no_do_jo, shipper_tenant: form.shipper_tenant,
+          no_do_jo: form.no_do_jo, shipper_tenant_id: form.shipper_tenant_id ? Number(form.shipper_tenant_id) : undefined,
         });
       } else {
         await registrationsApi.create({
@@ -122,7 +140,7 @@ export default function RegistrationFormModal({ open, onClose, onSaved, registra
           container_size_id: Number(form.container_size_id),
           container_type_id: Number(form.container_type_id),
           cargo_status_id: Number(form.cargo_status_id),
-          no_do_jo: form.no_do_jo, shipper_tenant: form.shipper_tenant,
+          no_do_jo: form.no_do_jo, shipper_tenant_id: form.shipper_tenant_id ? Number(form.shipper_tenant_id) : undefined,
           vehicle_type: form.vehicle_type, vehicle_number: form.vehicle_number,
           remark: form.remark,
           lolo_at: form.lolo_at,
@@ -191,7 +209,10 @@ export default function RegistrationFormModal({ open, onClose, onSaved, registra
                 <input className="input" value={form.no_do_jo} onChange={set("no_do_jo")} placeholder="DO/2026/01/001" />
               </FormWrapper>
               <FormWrapper label="Shipper/Tenant">
-                <input className="input" value={form.shipper_tenant} onChange={set("shipper_tenant")} placeholder="PT. ..." />
+                <select className="input" value={form.shipper_tenant_id} onChange={set("shipper_tenant_id")}>
+                  <option value="">-- Pilih Shipper --</option>
+                  {ffs.map(f => <option key={f.id} value={f.id}>{f.name}</option>)}
+                </select>
               </FormWrapper>
             </div>
           </div>
@@ -231,14 +252,15 @@ export default function RegistrationFormModal({ open, onClose, onSaved, registra
                   {/* Block — disabled until yard selected */}
                   <FormWrapper label="Block" req>
                     <div className="relative">
-                      <select className="input" required value={form.block_id} onChange={set("block_id")}
+                      <select className="input" required value={form.block_id} 
+                        onChange={e => handleBlockChange(e.target.value)}
                         disabled={!form.yard_id || blocksLoading}>
                         <option value="">
                           {!form.yard_id ? "— Pilih yard dulu —" : blocksLoading ? "Memuat blok…" : "-- Pilih Block --"}
                         </option>
                         {blocks.map(b => <option key={b.id} value={b.id}>{b.block_code}</option>)}
                       </select>
-                      {blocksLoading && (
+                      {(blocksLoading || slotsLoading) && (
                         <svg className="absolute right-8 top-1/2 -translate-y-1/2 w-4 h-4 animate-spin text-slate-400 pointer-events-none"
                           fill="none" viewBox="0 0 24 24">
                           <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
@@ -248,9 +270,63 @@ export default function RegistrationFormModal({ open, onClose, onSaved, registra
                     </div>
                   </FormWrapper>
 
-                  <FormWrapper label="Posisi Length" req><input className="input" type="number" required min={1} value={form.pos_length} onChange={set("pos_length")} /></FormWrapper>
-                  <FormWrapper label="Posisi Width" req><input className="input" type="number" required min={1} value={form.pos_width} onChange={set("pos_width")} /></FormWrapper>
-                  <FormWrapper label="Posisi Height" req><input className="input" type="number" required min={1} value={form.pos_height} onChange={set("pos_height")} /></FormWrapper>
+                  {(() => {
+                    const selectedBlock = blocks.find(b => String(b.id) === form.block_id);
+                    const maxL = selectedBlock?.max_length || 0;
+                    const maxW = selectedBlock?.max_width || 0;
+                    const maxH = selectedBlock?.max_height || 0;
+
+                    const isOccupied = (l: number, w: number, h: number) => 
+                      occupiedSlots.some(s => s.pos_length === l && s.pos_width === w && s.pos_height === h);
+
+                    return (
+                      <>
+                        <FormWrapper label="Posisi Length" req>
+                          <SearchableSelect
+                            options={Array.from({ length: maxL }).map((_, i) => ({ value: i+1, label: String(i+1) }))}
+                            value={form.pos_length}
+                            onChange={val => setForm(p => ({ ...p, pos_length: val, pos_width: "", pos_height: "" }))}
+                            disabled={!form.block_id || slotsLoading}
+                            placeholder="Pilih Length..."
+                          />
+                        </FormWrapper>
+
+                        <FormWrapper label="Posisi Width" req>
+                          <SearchableSelect
+                            options={Array.from({ length: maxW }).map((_, i) => ({ value: i+1, label: String(i+1) }))}
+                            value={form.pos_width}
+                            onChange={val => setForm(p => ({ ...p, pos_width: val, pos_height: "" }))}
+                            disabled={!form.pos_length}
+                            placeholder="Pilih Width..."
+                          />
+                        </FormWrapper>
+
+                        <FormWrapper label="Posisi Height" req>
+                          <SearchableSelect
+                            options={Array.from({ length: maxH }).map((_, i) => {
+                              const h = i + 1;
+                              const l = Number(form.pos_length);
+                              const w = Number(form.pos_width);
+                              
+                              const occupied = isOccupied(l, w, h);
+                              const canStack = h === 1 || isOccupied(l, w, h - 1);
+                              
+                              return {
+                                value: h,
+                                label: `${h}${occupied ? " (Terisi)" : !canStack ? " (Bawah Kosong)" : ""}`,
+                                disabled: occupied || !canStack
+                              };
+                            })}
+                            value={form.pos_height}
+                            onChange={val => setForm(p => ({ ...p, pos_height: val }))}
+                            disabled={!form.pos_width}
+                            placeholder="Pilih Height..."
+                          />
+                        </FormWrapper>
+                      </>
+                    );
+                  })()}
+
                   <FormWrapper label="Waktu Penempatan" req>
                     <input className="input" type="datetime-local" required value={form.moved_at} onChange={set("moved_at")} />
                   </FormWrapper>

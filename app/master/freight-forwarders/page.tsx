@@ -62,7 +62,7 @@ export default function FreightForwardersPage() {
   return (
     <AppLayout>
       <div className="p-4 sm:p-6">
-        <PageHeader title="Freight Forwarder" subtitle="Manajemen data freight forwarder"
+        <PageHeader title="Business Partner" subtitle="Manajemen data business partner"
           actions={<button className="btn-primary btn-sm sm:btn" onClick={() => openForm()}>+ Tambah</button>} />
         <div className="card p-4 mb-4">
           <input className="input max-w-sm" placeholder="Cari nama, email..." value={search} onChange={e => setSearch(e.target.value)} />
@@ -107,7 +107,7 @@ export default function FreightForwardersPage() {
           <div className="px-4 py-3 border-t border-slate-800"><p className="text-xs text-slate-500">{filtered.length} dari {data.length} data</p></div>
         </div>
 
-        <Modal open={formOpen} onClose={() => setFormOpen(false)} title={editItem ? "Edit Freight Forwarder" : "Tambah Freight Forwarder"} size="md">
+        <Modal open={formOpen} onClose={() => setFormOpen(false)} title={editItem ? "Edit Business Partner" : "Tambah Business Partner"} size="md">
           <form onSubmit={handleSave} className="space-y-4">
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="sm:col-span-2"><label className="label">Nama <span className="text-red-400">*</span></label>
@@ -124,10 +124,10 @@ export default function FreightForwardersPage() {
           </form>
         </Modal>
         <ConfirmDialog open={!!deactivateItem} onClose={() => setDeactivateItem(null)} onConfirm={handleDeactivate}
-          title={deactivateItem?.is_active ? "Nonaktifkan Freight Forwarder" : "Aktifkan Freight Forwarder"} 
+          title={deactivateItem?.is_active ? "Nonaktifkan Business Partner" : "Aktifkan Business Partner"} 
           message={deactivateItem?.is_active 
-            ? `Nonaktifkan freight forwarder "${deactivateItem?.name}"?`
-            : `Aktifkan kembali freight forwarder "${deactivateItem?.name}"?`} 
+            ? `Nonaktifkan business partner "${deactivateItem?.name}"?`
+            : `Aktifkan kembali business partner "${deactivateItem?.name}"?`} 
           confirmLabel={deactivateItem?.is_active ? "Nonaktifkan" : "Aktifkan"} 
           danger={deactivateItem?.is_active}
           success={!deactivateItem?.is_active}
