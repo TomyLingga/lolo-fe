@@ -4,6 +4,7 @@ import Modal from "@/components/ui/Modal";
 import { loloRecordsApi, yardsApi, blocksApi, cargoStatusesApi } from "@/lib/api";
 import { getErrorMessage } from "@/lib/utils";
 import toast from "react-hot-toast";
+import SearchableSelect from "@/components/ui/SearchableSelect";
 import type { Registration, Yard, Block, CargoStatus } from "@/types";
 
 interface Props {
@@ -25,7 +26,10 @@ export default function LoloFormModal({ open, onClose, onSaved, registration }: 
   const [initLoading, setInitLoading] = useState(false); // State untuk loading data master
   const [yards, setYards] = useState<Yard[]>([]);
   const [blocks, setBlocks] = useState<Block[]>([]);
+  const [blocksLoading, setBlocksLoading] = useState(false);
   const [statuses, setStatuses] = useState<CargoStatus[]>([]);
+  const [occupiedSlots, setOccupiedSlots] = useState<{ registration_id: number; pos_length: number; pos_width: number; pos_height: number }[]>([]);
+  const [slotsLoading, setSlotsLoading] = useState(false);
   
   const loloRecs = (registration as any)?.lolo_records || [];
   const actualLastLolo = loloRecs.length > 0 ? loloRecs[loloRecs.length - 1].operation_type : null;
@@ -51,7 +55,39 @@ export default function LoloFormModal({ open, onClose, onSaved, registration }: 
     const now = new Date();
     const local = new Date(now.getTime() - now.getTimezoneOffset() * 60000).toISOString().slice(0, 16);
     setForm({ cargo_status_id: String(registration?.cargo_status_id || ""), vehicle_type: "", vehicle_number: "", lolo_at: local, yard_id: "", block_id: "", pos_length: "", pos_width: "", pos_height: "", moved_at: local, note: "" });
+    setOccupiedSlots([]);
   }, [open, registration]);
+
+  async function handleYardChange(yardId: string) {
+    setForm(p => ({ ...p, yard_id: yardId, block_id: "", pos_length: "", pos_width: "", pos_height: "" }));
+    setBlocks([]);
+    if (!yardId) return;
+    setBlocksLoading(true);
+    try {
+      const res = await blocksApi.getAll();
+      const filtered = res.data.data.filter((b: any) => b.is_active && String(b.yard_id) === yardId);
+      setBlocks(filtered);
+    } catch {
+      toast.error("Gagal memuat blok");
+    } finally {
+      setBlocksLoading(false);
+    }
+  }
+
+  async function handleBlockChange(blockId: string) {
+    setForm(p => ({ ...p, block_id: blockId, pos_length: "", pos_width: "", pos_height: "" }));
+    setOccupiedSlots([]);
+    if (!blockId) return;
+    setSlotsLoading(true);
+    try {
+      const res = await blocksApi.getOccupiedSlots(Number(blockId));
+      setOccupiedSlots(res.data.data);
+    } catch {
+      toast.error("Gagal memuat data slot");
+    } finally {
+      setSlotsLoading(false);
+    }
+  }
 
   const filteredBlocks = form.yard_id ? blocks.filter(b => b.yard_id === Number(form.yard_id)) : blocks;
   
@@ -126,20 +162,93 @@ export default function LoloFormModal({ open, onClose, onSaved, registration }: 
                 <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-3">Posisi Kontainer</p>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <FormWrapper label="Yard" req>
-                    <select className="input" required value={form.yard_id} onChange={set("yard_id")}>
+                    <select className="input" required value={form.yard_id} onChange={e => handleYardChange(e.target.value)}>
                       <option value="">-- Pilih Yard --</option>
                       {yards.map(y => <option key={y.id} value={y.id}>{y.name}</option>)}
                     </select>
                   </FormWrapper>
                   <FormWrapper label="Block" req>
-                    <select className="input" required value={form.block_id} onChange={set("block_id")}>
-                      <option value="">-- Pilih Block --</option>
-                      {filteredBlocks.map(b => <option key={b.id} value={b.id}>{b.block_code}</option>)}
-                    </select>
+                    <div className="relative">
+                      <select className="input" required value={form.block_id} 
+                        onChange={e => handleBlockChange(e.target.value)}
+                        disabled={!form.yard_id || blocksLoading}>
+                        <option value="">
+                          {!form.yard_id ? "— Pilih yard dulu —" : blocksLoading ? "Memuat blok…" : "-- Pilih Block --"}
+                        </option>
+                        {blocks.map(b => <option key={b.id} value={b.id}>{b.block_code}</option>)}
+                      </select>
+                      {(blocksLoading || slotsLoading) && (
+                        <svg className="absolute right-8 top-1/2 -translate-y-1/2 w-4 h-4 animate-spin text-slate-400 pointer-events-none"
+                          fill="none" viewBox="0 0 24 24">
+                          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                        </svg>
+                      )}
+                    </div>
                   </FormWrapper>
-                  <FormWrapper label="Pos. Length" req><input className="input" type="number" required min={1} value={form.pos_length} onChange={set("pos_length")} /></FormWrapper>
-                  <FormWrapper label="Pos. Width" req><input className="input" type="number" required min={1} value={form.pos_width} onChange={set("pos_width")} /></FormWrapper>
-                  <FormWrapper label="Pos. Height" req><input className="input" type="number" required min={1} value={form.pos_height} onChange={set("pos_height")} /></FormWrapper>
+
+                  {(() => {
+                    const selectedBlock = blocks.find(b => String(b.id) === form.block_id);
+                    const maxL = selectedBlock?.max_length || 0;
+                    const maxW = selectedBlock?.max_width || 0;
+                    const maxH = selectedBlock?.max_height || 0;
+
+                    const isOccupied = (l: number, w: number, h: number) => 
+                      occupiedSlots.some(s => 
+                        s.pos_length === l && 
+                        s.pos_width === w && 
+                        s.pos_height === h &&
+                        s.registration_id !== registration?.id // Exclude current registration as per user request
+                      );
+
+                    return (
+                      <>
+                        <FormWrapper label="Pos. Length" req>
+                          <SearchableSelect
+                            options={Array.from({ length: maxL }).map((_, i) => ({ value: i+1, label: String(i+1) }))}
+                            value={form.pos_length}
+                            onChange={val => setForm(p => ({ ...p, pos_length: val, pos_width: "", pos_height: "" }))}
+                            disabled={!form.block_id || slotsLoading}
+                            placeholder="Pilih Length..."
+                          />
+                        </FormWrapper>
+
+                        <FormWrapper label="Pos. Width" req>
+                          <SearchableSelect
+                            options={Array.from({ length: maxW }).map((_, i) => ({ value: i+1, label: String(i+1) }))}
+                            value={form.pos_width}
+                            onChange={val => setForm(p => ({ ...p, pos_width: val, pos_height: "" }))}
+                            disabled={!form.pos_length}
+                            placeholder="Pilih Width..."
+                          />
+                        </FormWrapper>
+
+                        <FormWrapper label="Pos. Height" req>
+                          <SearchableSelect
+                            options={Array.from({ length: maxH }).map((_, i) => {
+                              const h = i + 1;
+                              const l = Number(form.pos_length);
+                              const w = Number(form.pos_width);
+                              
+                              const occupied = isOccupied(l, w, h);
+                              const canStack = h === 1 || isOccupied(l, w, h - 1);
+                              
+                              return {
+                                value: h,
+                                label: `${h}${occupied ? " (Terisi)" : !canStack ? " (Bawah Kosong)" : ""}`,
+                                disabled: occupied || !canStack
+                              };
+                            })}
+                            value={form.pos_height}
+                            onChange={val => setForm(p => ({ ...p, pos_height: val }))}
+                            disabled={!form.pos_width}
+                            placeholder="Pilih Height..."
+                          />
+                        </FormWrapper>
+                      </>
+                    );
+                  })()}
+
                   <FormWrapper label="Waktu Masuk" req><input className="input" type="datetime-local" required value={form.moved_at} onChange={set("moved_at")} /></FormWrapper>
                   <div className="sm:col-span-2">
                     <FormWrapper label="Catatan">

@@ -34,7 +34,7 @@ export default function RegistrationFormModal({ open, onClose, onSaved, registra
   const [types, setTypes] = useState<ContainerType[]>([]);
   const [statuses, setStatuses] = useState<CargoStatus[]>([]);
   const [packages, setPackages] = useState<Package[]>([]);
-  const [occupiedSlots, setOccupiedSlots] = useState<{ pos_length: number; pos_width: number; pos_height: number }[]>([]);
+  const [occupiedSlots, setOccupiedSlots] = useState<{ registration_id: number; pos_length: number; pos_width: number; pos_height: number }[]>([]);
   const [slotsLoading, setSlotsLoading] = useState(false);
 
   const [form, setForm] = useState({

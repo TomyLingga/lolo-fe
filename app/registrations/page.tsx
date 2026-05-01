@@ -421,7 +421,7 @@ export default function RegistrationsPage() {
                           </span>
                           {actualLastLolo && (
                             <span className={cn("badge text-[10px] py-0.5 px-1.5 w-fit", actualLastLolo === "LIFT_ON" ? "badge-amber" : "badge-blue")}>
-                              {actualLastLolo === "LIFT_ON" ? "LIFT ON" : "LIFT OFF"}
+                              {actualLastLolo === "LIFT_ON" ? "LN" : "LF"}
                             </span>
                           )}
                         </div>
@@ -469,7 +469,7 @@ export default function RegistrationsPage() {
                             <button onClick={() => openLolo(reg)}
                               className={cn("btn btn-sm", actualLastLolo === "LIFT_OFF" ? "btn-warning" : "btn-primary")}
                               title={actualLastLolo === "LIFT_OFF" ? "Lift On" : "Lift Off"}>
-                              {actualLastLolo === "LIFT_OFF" ? "LO" : "LF"}
+                              {actualLastLolo === "LIFT_OFF" ? "LN" : "LF"}
                             </button>
                           )}
 
