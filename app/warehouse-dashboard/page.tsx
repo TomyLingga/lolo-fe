@@ -104,7 +104,7 @@ export default function WarehouseDashboardPage() {
         />
 
         {/* Stats Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-3 xl:grid-cols-5 gap-4">
+        <div className={cn("grid grid-cols-1 md:grid-cols-3 gap-4", user?.role === "admin" ? "xl:grid-cols-5" : "xl:grid-cols-4")}>
           <div className="bg-slate-900 border border-slate-800 p-3 rounded-2xl flex items-center gap-3 shadow-xl">
             <div className="w-10 h-10 rounded-xl flex items-center justify-center bg-white/5 text-blue-400">
               <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16" /></svg>
@@ -135,15 +135,17 @@ export default function WarehouseDashboardPage() {
             </div>
           </div>
 
-          <div className="bg-slate-900 border border-slate-800 p-3 rounded-2xl flex items-center gap-3 shadow-xl">
-            <div className="w-10 h-10 rounded-xl flex items-center justify-center bg-white/5 text-amber-400">
-              <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+          {user?.role === "admin" && (
+            <div className="bg-slate-900 border border-slate-800 p-3 rounded-2xl flex items-center gap-3 shadow-xl">
+              <div className="w-10 h-10 rounded-xl flex items-center justify-center bg-white/5 text-amber-400">
+                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+              </div>
+              <div>
+                <p className="text-[8px] font-bold text-slate-500 uppercase tracking-widest">Proyeksi Pendapatan</p>
+                <p className="text-base font-bold text-white leading-tight">{loading ? "..." : formatCurrency(estimatedRevenue)}</p>
+              </div>
             </div>
-            <div>
-              <p className="text-[8px] font-bold text-slate-500 uppercase tracking-widest">Proyeksi Pendapatan</p>
-              <p className="text-base font-bold text-white leading-tight">{loading ? "..." : formatCurrency(estimatedRevenue)}</p>
-            </div>
-          </div>
+          )}
 
           <div className="bg-slate-900 border border-slate-800 p-3 rounded-2xl flex items-center justify-between shadow-xl overflow-hidden relative group">
             <div className="z-10">

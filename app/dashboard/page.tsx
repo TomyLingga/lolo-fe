@@ -120,7 +120,7 @@ export default function DashboardPage() {
       accent: "rose",
       sub: `pada ${time.toLocaleString("id-ID", { month: "long", year: "numeric" })}`,
     },
-    {
+    ...(user?.role === "admin" ? [{
       label: "Proyeksi Pendapatan",
       value: loading ? "—" : new Intl.NumberFormat("id-ID", { style: "currency", currency: "IDR", maximumFractionDigits: 0 }).format(stats.projected_revenue),
       icon: (
@@ -130,7 +130,7 @@ export default function DashboardPage() {
       ),
       accent: "emerald",
       sub: `pada ${time.toLocaleString("id-ID", { month: "long", year: "numeric" })}`,
-    },
+    }] : []),
     {
       label: "Waktu Sistem",
       value: loading ? "—" : time.toLocaleString("id-ID", { day: "2-digit", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit", second: "2-digit" }).replace(',', ''),
@@ -144,6 +144,7 @@ export default function DashboardPage() {
       sub: "waktu lokal saat ini",
     },
   ];
+
 
   const accentMap: Record<string, string> = {
     indigo: "bg-indigo-500/10 text-indigo-400 ring-indigo-500/20",
@@ -182,7 +183,7 @@ export default function DashboardPage() {
         />
 
         {/* Stats */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
+        <div className={cn("grid grid-cols-1 sm:grid-cols-2 gap-4", user?.role === "admin" ? "lg:grid-cols-5" : "lg:grid-cols-4")}>
           {statCards.map((card) => (
             <div key={card.label} className="card p-3 flex items-start gap-3 group hover:border-brand-500/50 transition-colors">
               <div className={`w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 ring-2 transition-transform group-hover:scale-110 ${accentMap[card.accent]}`}>
