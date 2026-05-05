@@ -9,7 +9,8 @@ import StorageFormModal from "@/components/modals/StorageFormModal";
 import LoloTimelineModal from "@/components/modals/LoloTimelineModal";
 import StorageTimelineModal from "@/components/modals/StorageTimelineModal";
 import RemarkModal from "@/components/modals/RemarkModal";
-import Modal from "@/components/ui/Modal"; // Import ini untuk Modal Close custom
+import LoloEditModal from "@/components/modals/LoloEditModal";
+import Modal from "@/components/ui/Modal";
 import { registrationsApi } from "@/lib/api";
 import { getUser } from "@/lib/auth";
 import { formatDateTime, getErrorMessage, cn } from "@/lib/utils";
@@ -56,6 +57,8 @@ export default function RegistrationsPage() {
   const [remarkOpen, setRemarkOpen] = useState(false);
   const [remarkReadOnly, setRemarkReadOnly] = useState(false);
   const [selectedReg, setSelectedReg] = useState<Registration | null>(null);
+  const [loloEditOpen, setLoloEditOpen] = useState(false);
+  const [selectedLoloId, setSelectedLoloId] = useState<number | null>(null);
   const [deactivateConfirm, setDeactivateConfirm] = useState(false);
   const [actionLoading, setActionLoading] = useState(false);
 
@@ -269,6 +272,11 @@ export default function RegistrationsPage() {
   }
   function openDeactivate(reg: Registration) { setSelectedReg(reg); setDeactivateConfirm(true); }
   function openEdit(reg: Registration) { setEditReg(reg); setFormOpen(true); }
+
+  function handleEditLolo(loloId: number) {
+    setSelectedLoloId(loloId);
+    setLoloEditOpen(true);
+  }
 
   return (
     <AppLayout>
@@ -552,7 +560,10 @@ export default function RegistrationsPage() {
           onSaved={() => { setLoloOpen(false); fetchData(); }} />
         <StorageFormModal open={storageOpen} onClose={() => setStorageOpen(false)} registration={selectedReg}
           onSaved={() => { setStorageOpen(false); fetchData(); }} />
-        <LoloTimelineModal open={loloTimeOpen} onClose={() => setLoloTimeOpen(false)} registration={selectedReg} />
+        <LoloTimelineModal open={loloTimeOpen} onClose={() => setLoloTimeOpen(false)} registration={selectedReg} 
+          isAdmin={isAdmin} onEditLolo={handleEditLolo} />
+        <LoloEditModal open={loloEditOpen} onClose={() => setLoloEditOpen(false)} loloId={selectedLoloId} 
+          onSaved={() => { setLoloEditOpen(false); fetchData(); }} />
         <StorageTimelineModal open={storageTimeOpen} onClose={() => setStorageTimeOpen(false)} registration={selectedReg} />
         <RemarkModal open={remarkOpen} onClose={() => setRemarkOpen(false)} registration={selectedReg} readOnly={remarkReadOnly} />
 

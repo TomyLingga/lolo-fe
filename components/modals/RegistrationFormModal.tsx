@@ -130,7 +130,13 @@ export default function RegistrationFormModal({ open, onClose, onSaved, registra
     try {
       if (editing) {
         await registrationsApi.update(registration!.id, {
-          no_do_jo: form.no_do_jo, shipper_tenant_id: form.shipper_tenant_id ? Number(form.shipper_tenant_id) : undefined,
+          freight_forwarder_id: Number(form.freight_forwarder_id),
+          package_id: Number(form.package_id),
+          container_number: form.container_number,
+          container_size_id: Number(form.container_size_id),
+          container_type_id: Number(form.container_type_id),
+          no_do_jo: form.no_do_jo,
+          shipper_tenant_id: form.shipper_tenant_id ? Number(form.shipper_tenant_id) : undefined,
         });
       } else {
         await registrationsApi.create({
@@ -172,29 +178,29 @@ export default function RegistrationFormModal({ open, onClose, onSaved, registra
             <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-3">Informasi Kontainer</p>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <FormWrapper label="Freight Forwarder" req>
-                <select className="input" required value={form.freight_forwarder_id} onChange={set("freight_forwarder_id")} disabled={editing}>
+                <select className="input" required value={form.freight_forwarder_id} onChange={set("freight_forwarder_id")} disabled={editing && !isAdmin}>
                   <option value="">-- Pilih FF --</option>
                   {ffs.map(f => <option key={f.id} value={f.id}>{f.name}</option>)}
                 </select>
               </FormWrapper>
               <FormWrapper label="Paket" req>
-                <select className="input" required value={form.package_id} onChange={set("package_id")} disabled={editing}>
+                <select className="input" required value={form.package_id} onChange={set("package_id")} disabled={editing && !isAdmin}>
                   <option value="">-- Pilih Paket --</option>
                   {packages.map(p => <option key={p.id} value={p.id}>{p.code} - {p.name}</option>)}
                 </select>
               </FormWrapper>
               <FormWrapper label="No. Container" req>
                 <input className="input" required value={form.container_number} onChange={set("container_number")}
-                  placeholder="ABCU1234567" maxLength={20} disabled={editing} />
+                  placeholder="ABCU1234567" maxLength={20} disabled={editing && !isAdmin} />
               </FormWrapper>
               <FormWrapper label="Ukuran Container" req>
-                <select className="input" required value={form.container_size_id} onChange={set("container_size_id")} disabled={editing}>
+                <select className="input" required value={form.container_size_id} onChange={set("container_size_id")} disabled={editing && !isAdmin}>
                   <option value="">-- Pilih --</option>
                   {sizes.map(s => <option key={s.id} value={s.id}>{s.code} - {s.description}</option>)}
                 </select>
               </FormWrapper>
               <FormWrapper label="Tipe Container" req>
-                <select className="input" required value={form.container_type_id} onChange={set("container_type_id")} disabled={editing}>
+                <select className="input" required value={form.container_type_id} onChange={set("container_type_id")} disabled={editing && !isAdmin}>
                   <option value="">-- Pilih --</option>
                   {types.map(t => <option key={t.id} value={t.id}>{t.code} - {t.description}</option>)}
                 </select>

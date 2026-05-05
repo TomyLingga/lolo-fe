@@ -8,9 +8,11 @@ interface Props {
   open: boolean;
   onClose: () => void;
   registration: Registration | null;
+  isAdmin: boolean;
+  onEditLolo?: (loloId: number) => void;
 }
 
-export default function LoloTimelineModal({ open, onClose, registration }: Props) {
+export default function LoloTimelineModal({ open, onClose, registration, isAdmin, onEditLolo }: Props) {
   // Langsung ambil dari data registrasi, tidak perlu fetch API lagi
   const records = registration?.lolo_records || [];
 
@@ -25,6 +27,7 @@ export default function LoloTimelineModal({ open, onClose, registration }: Props
     ) : (
       <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 19l-7-7 7-7M19 19l-7-7 7-7" /></svg>
     ),
+    onEdit: isAdmin ? () => onEditLolo?.(r.id) : undefined,
     details: [
       { label: "Kendaraan", value: `${r.vehicle_type || "-"} / ${r.vehicle_number || "-"}` },
       { label: "Status", value: r.cargo_status?.description || "-" },

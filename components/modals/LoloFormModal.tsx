@@ -203,7 +203,7 @@ export default function LoloFormModal({ open, onClose, onSaved, registration }: 
 
                     return (
                       <>
-                        <FormWrapper label="Pos. Length" req>
+                        <FormWrapper label="Posisi Length" req>
                           <SearchableSelect
                             options={Array.from({ length: maxL }).map((_, i) => ({ value: i+1, label: String(i+1) }))}
                             value={form.pos_length}
@@ -213,7 +213,7 @@ export default function LoloFormModal({ open, onClose, onSaved, registration }: 
                           />
                         </FormWrapper>
 
-                        <FormWrapper label="Pos. Width" req>
+                        <FormWrapper label="Posisi Width" req>
                           <SearchableSelect
                             options={Array.from({ length: maxW }).map((_, i) => ({ value: i+1, label: String(i+1) }))}
                             value={form.pos_width}
@@ -223,7 +223,7 @@ export default function LoloFormModal({ open, onClose, onSaved, registration }: 
                           />
                         </FormWrapper>
 
-                        <FormWrapper label="Pos. Height" req>
+                        <FormWrapper label="Posisi Height" req>
                           <SearchableSelect
                             options={Array.from({ length: maxH }).map((_, i) => {
                               const h = i + 1;

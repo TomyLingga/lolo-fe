@@ -175,6 +175,7 @@ export interface LoloRecord {
   block?: Block;
   created_at: string;
   tariff_price?: string;
+  registration?: Registration;
   created_by?: {
     id: number;
     name: string;

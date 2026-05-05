@@ -129,6 +129,8 @@ export const registrationsApi = {
 export const loloRecordsApi = {
   getByRegistration: (registrationId: number) =>
     api.get<{ data: LoloRecord[] }>(`/registrations/${registrationId}/lolo-records`),
+  getDetail: (id: number) =>
+    api.get<{ data: LoloRecord }>(`/lolo-records/${id}`),
   create: (registrationId: number, data: Partial<LoloRecord>) =>
     api.post<{ data: LoloRecord }>(`/registrations/${registrationId}/lolo-records`, data),
   update: (id: number, data: Partial<LoloRecord>) =>

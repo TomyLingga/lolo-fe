@@ -10,6 +10,7 @@ interface TimelineItem {
   badgeColor?: "blue" | "green" | "amber" | "slate" | "red";
   details?: { label: string; value: React.ReactNode }[];
   icon?: React.ReactNode;
+  onEdit?: () => void;
 }
 
 export default function Timeline({ items }: { items: TimelineItem[] }) {
@@ -55,6 +56,11 @@ export default function Timeline({ items }: { items: TimelineItem[] }) {
                     item.badgeColor === "slate" ? "badge-slate" : "badge-blue")}>
                     {item.badge}
                   </span>
+                )}
+                {item.onEdit && (
+                  <button onClick={item.onEdit} className="text-[10px] text-brand-400 hover:text-brand-300 font-bold uppercase tracking-wider underline mt-1">
+                    Edit
+                  </button>
                 )}
               </div>
             </div>
