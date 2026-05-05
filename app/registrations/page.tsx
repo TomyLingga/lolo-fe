@@ -13,7 +13,7 @@ import LoloEditModal from "@/components/modals/LoloEditModal";
 import Modal from "@/components/ui/Modal";
 import { registrationsApi } from "@/lib/api";
 import { getUser } from "@/lib/auth";
-import { formatDate, formatDateTime, formatTime, getErrorMessage, cn } from "@/lib/utils";
+import { formatDate, formatDateRaw, formatDateTime, formatTime, getErrorMessage, cn, toExcelDate, today as getToday } from "@/lib/utils";
 import toast from "react-hot-toast";
 import * as XLSX from "xlsx";
 import type { Registration } from "@/types";
@@ -139,97 +139,230 @@ export default function RegistrationsPage() {
     else { setSortCol(col); setSortOrd("asc"); }
   };
 
+  // const handleExportExcel = () => {
+  //   if (filtered.length === 0) {
+  //     toast.error("Tidak ada data untuk diexport");
+  //     return;
+  //   }
+
+  //   const regData = filtered.map(r => {
+  //     const loloRecs = (r as any).lolo_records || [];
+  //     return {
+  //       "ID": r.id,
+  //       "No. Container": r.container_number,
+  //       "Paket": (r as any).package?.code || "-",
+  //       "Freight Forwarder": (r as any).freight_forwarders?.name || "-",
+  //       "Tenant": (r as any).shipper_tenant?.name || "-",
+  //       "No. DO/JO": r.no_do_jo || "-",
+  //       "Ukuran": (r as any).size?.description || "-",
+  //       "Tipe": (r as any).type?.description || "-",
+  //       "Status Record": r.record_status,
+  //       "Tgl Masuk": formatDateRaw(loloRecs.find((l: any) => l.operation_type === "LIFT_OFF")?.lolo_at || r.created_at),
+  //       "Jam Masuk": formatTime(loloRecs.find((l: any) => l.operation_type === "LIFT_OFF")?.lolo_at || r.created_at),
+  //       "Tgl Keluar": [...loloRecs].reverse().find((l: any) => l.operation_type === "LIFT_ON")?.lolo_at ? formatDateRaw([...loloRecs].reverse().find((l: any) => l.operation_type === "LIFT_ON")?.lolo_at) : "-",
+  //       "Jam Keluar": [...loloRecs].reverse().find((l: any) => l.operation_type === "LIFT_ON")?.lolo_at ? formatTime([...loloRecs].reverse().find((l: any) => l.operation_type === "LIFT_ON")?.lolo_at) : "-",
+  //     };
+  //   });
+
+  //   const loloData: any[] = [];
+  //   const storageData: any[] = [];
+  //   const remarkData: any[] = [];
+
+  //   filtered.forEach(r => {
+  //     const loloRecs = (r as any).lolo_records || [];
+  //     loloRecs.forEach((l: any) => {
+  //       loloData.push({
+  //         "No. Container": r.container_number,
+  //         "Operasi": l.operation_type === "LIFT_ON" ? "LIFT ON" : "LIFT OFF",
+  //         "Tanggal": formatDateRaw(l.lolo_at),
+  //         "Jam": formatTime(l.lolo_at),
+  //         "Kendaraan": `${l.vehicle_type || "-"} / ${l.vehicle_number || "-"}`,
+  //         "Status Kargo": l.cargo_status?.description || "-",
+  //         "Tarif": l.tariff_price ? Number(l.tariff_price) : 0,
+  //         "Operator": l.created_by ? `${l.created_by.name} (${l.created_by.jabatan || "-"})` : "-",
+  //       });
+  //     });
+
+  //     const storageRecs = (r as any).storage_records || [];
+  //     storageRecs.forEach((s: any) => {
+  //       storageData.push({
+  //         "No. Container": r.container_number,
+  //         "Mulai": formatDateRaw(s.start_date),
+  //         "Selesai": s.end_date ? formatDateRaw(s.end_date) : "Masih di Storage",
+  //         "Lokasi": `${s.yard?.name || "-"} / Block ${s.block?.block_code || "-"}`,
+  //         "Posisi": `L${s.pos_length} W${s.pos_width} H${s.pos_height}`,
+  //         "Status Kargo": s.cargo_status?.description || "-",
+  //         "Tarif/Hari": s.storage_price_per_day ? Number(s.storage_price_per_day) : 0,
+  //         "Operator": s.moved_by ? `${s.moved_by.name} (${s.moved_by.jabatan || "-"})` : "-",
+  //       });
+  //     });
+
+  //     const remarks = (r as any).registration_remarks || [];
+  //     remarks.forEach((rm: any) => {
+  //       remarkData.push({
+  //         "No. Container": r.container_number,
+  //         "Catatan": rm.remark,
+  //         "Tanggal": formatDateRaw(rm.created_at),
+  //         "Jam": formatTime(rm.created_at),
+  //         "Oleh": rm.created_by?.name || rm.created_by || "-",
+  //       });
+  //     });
+  //   });
+
+  //   const wb = XLSX.utils.book_new();
+
+  //   const wsReg = XLSX.utils.json_to_sheet(regData, { cellDates: true });
+  //   XLSX.utils.book_append_sheet(wb, wsReg, "Registrasi");
+
+  //   if (loloData.length > 0) {
+  //     const wsLolo = XLSX.utils.json_to_sheet(loloData, { cellDates: true });
+  //     XLSX.utils.book_append_sheet(wb, wsLolo, "Riwayat LOLO");
+  //   }
+
+  //   if (storageData.length > 0) {
+  //     const wsStorage = XLSX.utils.json_to_sheet(storageData, { cellDates: true });
+  //     XLSX.utils.book_append_sheet(wb, wsStorage, "Riwayat Storage");
+  //   }
+
+  //   if (remarkData.length > 0) {
+  //     const wsRemark = XLSX.utils.json_to_sheet(remarkData, { cellDates: true });
+  //     XLSX.utils.book_append_sheet(wb, wsRemark, "Catatan");
+  //   }
+
+  //   XLSX.writeFile(wb, `Export_Registrasi_${getLocalDate(new Date())}.xlsx`);
+  // };
+
   const handleExportExcel = () => {
     if (filtered.length === 0) {
       toast.error("Tidak ada data untuk diexport");
       return;
     }
 
+    // Helper: parse string → Date (untuk Excel date cell)
+    // Gunakan toExcelDate dari utils
+    const d = (str: string | null | undefined): Date | null => toExcelDate(str);
+
+    // ── Sheet 1: Registrasi ──────────────────────────────────────────────────
     const regData = filtered.map(r => {
       const loloRecs = (r as any).lolo_records || [];
+      const firstLiftOff = loloRecs.find((l: any) => l.operation_type === "LIFT_OFF");
+      const lastLiftOn = [...loloRecs].reverse().find((l: any) => l.operation_type === "LIFT_ON");
+
       return {
         "ID": r.id,
         "No. Container": r.container_number,
         "Paket": (r as any).package?.code || "-",
         "Freight Forwarder": (r as any).freight_forwarders?.name || "-",
-        "Tenant": (r as any).shipper_tenant?.name || "-",
+        "Tenant": r.shipper_tenant || "-",
         "No. DO/JO": r.no_do_jo || "-",
         "Ukuran": (r as any).size?.description || "-",
         "Tipe": (r as any).type?.description || "-",
         "Status Record": r.record_status,
-        "Tgl Masuk": formatDate(loloRecs.find((l: any) => l.operation_type === "LIFT_OFF")?.lolo_at || r.created_at),
-        "Jam Masuk": formatTime(loloRecs.find((l: any) => l.operation_type === "LIFT_OFF")?.lolo_at || r.created_at),
-        "Tgl Keluar": [...loloRecs].reverse().find((l: any) => l.operation_type === "LIFT_ON")?.lolo_at ? formatDate([...loloRecs].reverse().find((l: any) => l.operation_type === "LIFT_ON")?.lolo_at) : "-",
-        "Jam Keluar": [...loloRecs].reverse().find((l: any) => l.operation_type === "LIFT_ON")?.lolo_at ? formatTime([...loloRecs].reverse().find((l: any) => l.operation_type === "LIFT_ON")?.lolo_at) : "-",
+        "Tgl Masuk": d(firstLiftOff?.lolo_at ?? r.created_at),
+        "Jam Masuk": formatTime(firstLiftOff?.lolo_at ?? r.created_at),
+        "Tgl Keluar": d(lastLiftOn?.lolo_at ?? null),
+        "Jam Keluar": lastLiftOn ? formatTime(lastLiftOn.lolo_at) : "-",
       };
     });
 
-    const loloData: any[] = [];
-    const storageData: any[] = [];
-    const remarkData: any[] = [];
-
+    // ── Sheet 2: Riwayat LOLO ────────────────────────────────────────────────
+    const loloData: object[] = [];
     filtered.forEach(r => {
-      const loloRecs = (r as any).lolo_records || [];
-      loloRecs.forEach((l: any) => {
+      ((r as any).lolo_records || []).forEach((l: any) => {
         loloData.push({
           "No. Container": r.container_number,
           "Operasi": l.operation_type === "LIFT_ON" ? "LIFT ON" : "LIFT OFF",
-          "Tanggal": formatDate(l.lolo_at),
+          "Tanggal": d(l.lolo_at),
           "Jam": formatTime(l.lolo_at),
           "Kendaraan": `${l.vehicle_type || "-"} / ${l.vehicle_number || "-"}`,
           "Status Kargo": l.cargo_status?.description || "-",
           "Tarif": l.tariff_price ? Number(l.tariff_price) : 0,
-          "Operator": l.created_by ? `${l.created_by.name} (${l.created_by.jabatan || "-"})` : "-",
+          "Operator": l.created_by ? `${l.created_by.name}${l.created_by.jabatan ? " (" + l.created_by.jabatan + ")" : ""}` : "-",
         });
       });
+    });
 
-      const storageRecs = (r as any).storage_records || [];
-      storageRecs.forEach((s: any) => {
+    // ── Sheet 3: Riwayat Storage ─────────────────────────────────────────────
+    const storageData: object[] = [];
+    filtered.forEach(r => {
+      ((r as any).storage_records || []).forEach((s: any) => {
         storageData.push({
           "No. Container": r.container_number,
-          "Mulai": s.start_date,
-          "Selesai": s.end_date || "Masih di Storage",
+          "Mulai": d(s.start_date),
+          "Selesai": s.end_date ? d(s.end_date) : null,
           "Lokasi": `${s.yard?.name || "-"} / Block ${s.block?.block_code || "-"}`,
           "Posisi": `L${s.pos_length} W${s.pos_width} H${s.pos_height}`,
           "Status Kargo": s.cargo_status?.description || "-",
           "Tarif/Hari": s.storage_price_per_day ? Number(s.storage_price_per_day) : 0,
-          "Operator": s.moved_by ? `${s.moved_by.name} (${s.moved_by.jabatan || "-"})` : "-",
+          "Total Hari": s.total_storage_days ?? "-",
+          "Total Biaya": s.total_storage_cost ? Number(s.total_storage_cost) : 0,
+          "Operator": s.moved_by ? `${s.moved_by.name}${s.moved_by.jabatan ? " (" + s.moved_by.jabatan + ")" : ""}` : "-",
         });
       });
+    });
 
-      const remarks = (r as any).registration_remarks || [];
-      remarks.forEach((rm: any) => {
+    // ── Sheet 4: Catatan ─────────────────────────────────────────────────────
+    const remarkData: object[] = [];
+    filtered.forEach(r => {
+      ((r as any).registration_remarks || []).forEach((rm: any) => {
         remarkData.push({
           "No. Container": r.container_number,
           "Catatan": rm.remark,
-          "Tanggal": formatDate(rm.created_at),
+          "Tanggal": d(rm.created_at),
           "Jam": formatTime(rm.created_at),
           "Oleh": rm.created_by?.name || rm.created_by || "-",
         });
       });
     });
 
+    // ── Build Workbook ───────────────────────────────────────────────────────
     const wb = XLSX.utils.book_new();
-    
-    const wsReg = XLSX.utils.json_to_sheet(regData);
+
+    // Format date cell: "DD/MM/YYYY"
+    const DATE_FMT = "DD/MM/YYYY";
+
+    const applyDateFormat = (ws: XLSX.WorkSheet, dateColLetters: string[]) => {
+      const range = XLSX.utils.decode_range(ws["!ref"] ?? "A1");
+      dateColLetters.forEach(colLetter => {
+        const colIdx = XLSX.utils.decode_col(colLetter);
+        for (let row = range.s.r + 1; row <= range.e.r; row++) {
+          const cellAddr = XLSX.utils.encode_cell({ r: row, c: colIdx });
+          const cell = ws[cellAddr];
+          if (cell && cell.v instanceof Date) {
+            cell.t = "d";
+            cell.z = DATE_FMT;
+          }
+        }
+      });
+    };
+
+    // Sheet Registrasi — kolom J = Tgl Masuk, L = Tgl Keluar
+    const wsReg = XLSX.utils.json_to_sheet(regData, { cellDates: true });
+    applyDateFormat(wsReg, ["J", "L"]);
     XLSX.utils.book_append_sheet(wb, wsReg, "Registrasi");
 
+    // Sheet LOLO — kolom C = Tanggal
     if (loloData.length > 0) {
-      const wsLolo = XLSX.utils.json_to_sheet(loloData);
+      const wsLolo = XLSX.utils.json_to_sheet(loloData, { cellDates: true });
+      applyDateFormat(wsLolo, ["C"]);
       XLSX.utils.book_append_sheet(wb, wsLolo, "Riwayat LOLO");
     }
-    
+
+    // Sheet Storage — kolom B = Mulai, C = Selesai
     if (storageData.length > 0) {
-      const wsStorage = XLSX.utils.json_to_sheet(storageData);
+      const wsStorage = XLSX.utils.json_to_sheet(storageData, { cellDates: true });
+      applyDateFormat(wsStorage, ["B", "C"]);
       XLSX.utils.book_append_sheet(wb, wsStorage, "Riwayat Storage");
     }
 
+    // Sheet Catatan — kolom C = Tanggal
     if (remarkData.length > 0) {
-      const wsRemark = XLSX.utils.json_to_sheet(remarkData);
+      const wsRemark = XLSX.utils.json_to_sheet(remarkData, { cellDates: true });
+      applyDateFormat(wsRemark, ["C"]);
       XLSX.utils.book_append_sheet(wb, wsRemark, "Catatan");
     }
 
-    XLSX.writeFile(wb, `Export_Registrasi_${getLocalDate(new Date())}.xlsx`);
+    XLSX.writeFile(wb, `Export_Registrasi_${getToday()}.xlsx`);
   };
 
   // Ubah Fungsi handleClose ini
@@ -368,16 +501,16 @@ export default function RegistrationsPage() {
                 <tr className="bg-slate-900/40">
                   <td className="px-2 py-1"></td>
                   <td className="px-2 py-1">
-                    <input className="input py-1 text-xs w-full bg-slate-800/50 border-slate-700" placeholder="Filter..." value={colFilters.container_number} onChange={e => setColFilters(p => ({...p, container_number: e.target.value}))} />
+                    <input className="input py-1 text-xs w-full bg-slate-800/50 border-slate-700" placeholder="Filter..." value={colFilters.container_number} onChange={e => setColFilters(p => ({ ...p, container_number: e.target.value }))} />
                   </td>
                   <td className="px-2 py-1">
-                    <input className="input py-1 text-xs w-full bg-slate-800/50 border-slate-700" placeholder="Filter..." value={colFilters.ff} onChange={e => setColFilters(p => ({...p, ff: e.target.value}))} />
+                    <input className="input py-1 text-xs w-full bg-slate-800/50 border-slate-700" placeholder="Filter..." value={colFilters.ff} onChange={e => setColFilters(p => ({ ...p, ff: e.target.value }))} />
                   </td>
                   <td className="px-2 py-1">
-                    <input className="input py-1 text-xs w-full bg-slate-800/50 border-slate-700" placeholder="Filter..." value={colFilters.tenant} onChange={e => setColFilters(p => ({...p, tenant: e.target.value}))} />
+                    <input className="input py-1 text-xs w-full bg-slate-800/50 border-slate-700" placeholder="Filter..." value={colFilters.tenant} onChange={e => setColFilters(p => ({ ...p, tenant: e.target.value }))} />
                   </td>
                   <td className="px-2 py-1">
-                    <input className="input py-1 text-xs w-full bg-slate-800/50 border-slate-700" placeholder="Filter..." value={colFilters.no_do_jo} onChange={e => setColFilters(p => ({...p, no_do_jo: e.target.value}))} />
+                    <input className="input py-1 text-xs w-full bg-slate-800/50 border-slate-700" placeholder="Filter..." value={colFilters.no_do_jo} onChange={e => setColFilters(p => ({ ...p, no_do_jo: e.target.value }))} />
                   </td>
                   <td className="px-2 py-1"></td>
                   <td className="px-2 py-1"></td>
@@ -458,7 +591,7 @@ export default function RegistrationsPage() {
                           const inDate = firstLoloOff ? firstLoloOff.lolo_at : reg.created_at;
                           const outDate = lastLoloOn ? lastLoloOn.lolo_at : null;
                           const operator = reg.created_by?.name || "-";
-                          
+
                           return (
                             <div className="flex flex-col gap-1.5 min-w-[140px]">
                               <div>
@@ -564,9 +697,9 @@ export default function RegistrationsPage() {
           onSaved={() => { setLoloOpen(false); fetchData(); }} />
         <StorageFormModal open={storageOpen} onClose={() => setStorageOpen(false)} registration={selectedReg}
           onSaved={() => { setStorageOpen(false); fetchData(); }} />
-        <LoloTimelineModal open={loloTimeOpen} onClose={() => setLoloTimeOpen(false)} registration={selectedReg} 
+        <LoloTimelineModal open={loloTimeOpen} onClose={() => setLoloTimeOpen(false)} registration={selectedReg}
           isAdmin={isAdmin} onEditLolo={handleEditLolo} />
-        <LoloEditModal open={loloEditOpen} onClose={() => setLoloEditOpen(false)} loloId={selectedLoloId} 
+        <LoloEditModal open={loloEditOpen} onClose={() => setLoloEditOpen(false)} loloId={selectedLoloId}
           onSaved={() => { setLoloEditOpen(false); fetchData(); }} />
         <StorageTimelineModal open={storageTimeOpen} onClose={() => setStorageTimeOpen(false)} registration={selectedReg} />
         <RemarkModal open={remarkOpen} onClose={() => setRemarkOpen(false)} registration={selectedReg} readOnly={remarkReadOnly} />
