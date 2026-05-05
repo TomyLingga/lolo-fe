@@ -13,7 +13,7 @@ import LoloEditModal from "@/components/modals/LoloEditModal";
 import Modal from "@/components/ui/Modal";
 import { registrationsApi } from "@/lib/api";
 import { getUser } from "@/lib/auth";
-import { formatDateTime, getErrorMessage, cn } from "@/lib/utils";
+import { formatDate, formatDateTime, formatTime, getErrorMessage, cn } from "@/lib/utils";
 import toast from "react-hot-toast";
 import * as XLSX from "xlsx";
 import type { Registration } from "@/types";
@@ -157,8 +157,10 @@ export default function RegistrationsPage() {
         "Ukuran": (r as any).size?.description || "-",
         "Tipe": (r as any).type?.description || "-",
         "Status Record": r.record_status,
-        "Tgl Masuk": formatDateTime(loloRecs.find((l: any) => l.operation_type === "LIFT_OFF")?.lolo_at || r.created_at),
-        "Tgl Keluar": [...loloRecs].reverse().find((l: any) => l.operation_type === "LIFT_ON")?.lolo_at ? formatDateTime([...loloRecs].reverse().find((l: any) => l.operation_type === "LIFT_ON")?.lolo_at) : "-",
+        "Tgl Masuk": formatDate(loloRecs.find((l: any) => l.operation_type === "LIFT_OFF")?.lolo_at || r.created_at),
+        "Jam Masuk": formatTime(loloRecs.find((l: any) => l.operation_type === "LIFT_OFF")?.lolo_at || r.created_at),
+        "Tgl Keluar": [...loloRecs].reverse().find((l: any) => l.operation_type === "LIFT_ON")?.lolo_at ? formatDate([...loloRecs].reverse().find((l: any) => l.operation_type === "LIFT_ON")?.lolo_at) : "-",
+        "Jam Keluar": [...loloRecs].reverse().find((l: any) => l.operation_type === "LIFT_ON")?.lolo_at ? formatTime([...loloRecs].reverse().find((l: any) => l.operation_type === "LIFT_ON")?.lolo_at) : "-",
       };
     });
 
@@ -172,7 +174,8 @@ export default function RegistrationsPage() {
         loloData.push({
           "No. Container": r.container_number,
           "Operasi": l.operation_type === "LIFT_ON" ? "LIFT ON" : "LIFT OFF",
-          "Waktu LOLO": formatDateTime(l.lolo_at),
+          "Tanggal": formatDate(l.lolo_at),
+          "Jam": formatTime(l.lolo_at),
           "Kendaraan": `${l.vehicle_type || "-"} / ${l.vehicle_number || "-"}`,
           "Status Kargo": l.cargo_status?.description || "-",
           "Tarif": l.tariff_price ? Number(l.tariff_price) : 0,
@@ -199,7 +202,8 @@ export default function RegistrationsPage() {
         remarkData.push({
           "No. Container": r.container_number,
           "Catatan": rm.remark,
-          "Waktu": formatDateTime(rm.created_at),
+          "Tanggal": formatDate(rm.created_at),
+          "Jam": formatTime(rm.created_at),
           "Oleh": rm.created_by?.name || rm.created_by || "-",
         });
       });

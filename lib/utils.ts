@@ -27,6 +27,13 @@ export function formatDateTime(date: string | null | undefined): string {
   });
 }
 
+export function formatTime(date: string | null | undefined): string {
+  if (!date) return "-";
+  return new Date(date).toLocaleTimeString("id-ID", {
+    hour: "2-digit", minute: "2-digit",
+  });
+}
+
 export function getErrorMessage(error: unknown): string {
   if (error && typeof error === "object" && "response" in error) {
     const axiosErr = error as { response?: { data?: { message?: string } } };
