@@ -401,8 +401,17 @@ export default function InvoicesPage() {
                               checked={selectedRegIds.includes(r.id)}
                               onChange={e => setSelectedRegIds(prev => e.target.checked ? [...prev, r.id] : prev.filter(id => id !== r.id))} />
                             <div className="flex flex-col flex-1 min-w-0">
-                              <div className="flex items-center justify-between">
-                                <span className="font-mono text-sm font-bold text-white">{r.container_number}</span>
+                              <div className="flex items-center justify-between gap-2">
+                                <div className="flex items-center gap-2">
+                                  <span className="font-mono text-sm font-bold text-white">{r.container_number}</span>
+                                  {/* Badge status registrasi */}
+                                  {r.record_status === 'OPEN' ? (
+                                    <span className="text-[9px] font-black px-1.5 py-0.5 rounded bg-emerald-500/15 text-emerald-400 border border-emerald-500/30 uppercase">AKTIF</span>
+                                  ) : (
+                                    <span className="text-[9px] font-black px-1.5 py-0.5 rounded bg-slate-700 text-slate-400 border border-slate-600 uppercase">CLOSED</span>
+                                  )}
+                                </div>
+                                {/* Info waktu keluar untuk yang CLOSED */}
                                 {lastLoloOn && (
                                   <span className="text-xs text-brand-400 font-medium">Out: {formatDateTime(lastLoloOn.lolo_at)}</span>
                                 )}
@@ -410,6 +419,15 @@ export default function InvoicesPage() {
                               <div className="flex items-center justify-between mt-1">
                                 <span className="text-[11px] text-slate-400 truncate pr-2">{(r as any).freight_forwarder?.name || (r as any).freight_forwarders?.name || "-"}</span>
                                 <span className="text-[10px] bg-slate-700/50 text-slate-400 px-1.5 py-0.5 rounded border border-slate-700 whitespace-nowrap">DO: {r.no_do_jo || "-"}</span>
+                              </div>
+                              {/* Periode tagihan */}
+                              <div className="flex items-center gap-2 mt-1">
+                                <span className="text-[10px] text-slate-500">
+                                  Periode: {(r as any).billing_since ? formatDate((r as any).billing_since) : 'Awal'} → {formatDate(createForm.invoice_date || new Date().toISOString())}
+                                </span>
+                                {(r as any).subtotal > 0 && (
+                                  <span className="text-[10px] text-brand-400 font-semibold ml-auto">{formatCurrency((r as any).subtotal)}</span>
+                                )}
                               </div>
                             </div>
                           </label>

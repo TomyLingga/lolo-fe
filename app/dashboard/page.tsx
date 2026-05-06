@@ -19,6 +19,7 @@ export default function DashboardPage() {
   const [activities, setActivities] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [showRevenue, setShowRevenue] = useState(false);
   const hasFetched = useRef(false);   // prevent StrictMode double-fire
 
   // ─── Local search — NO API re-call on search ─────────────────────────────────
@@ -130,6 +131,7 @@ export default function DashboardPage() {
       ),
       accent: "emerald",
       sub: `pada ${time.toLocaleString("id-ID", { month: "long", year: "numeric" })}`,
+      isRevenue: true,
     }] : []),
     {
       label: "Waktu Sistem",
@@ -201,6 +203,34 @@ export default function DashboardPage() {
                       {time.toLocaleDateString("id-ID", { weekday: 'short', day: '2-digit', month: 'short', year: 'numeric' })}
                     </p>
                   </div>
+                ) : (card as any).isRevenue ? (
+                  <>
+                    <div className="flex items-center gap-1.5 mt-0.5">
+                      <p className={cn(
+                        "font-bold leading-none tracking-tight text-xl sm:text-2xl transition-all duration-300",
+                        showRevenue ? "text-white" : "text-white"
+                      )}>
+                        {showRevenue ? card.value : "Rp ••••••••"}
+                      </p>
+                      <button
+                        onClick={() => setShowRevenue(v => !v)}
+                        className="ml-1 text-slate-500 hover:text-slate-300 transition-colors flex-shrink-0"
+                        title={showRevenue ? "Sembunyikan" : "Tampilkan"}
+                      >
+                        {showRevenue ? (
+                          <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21" />
+                          </svg>
+                        ) : (
+                          <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                          </svg>
+                        )}
+                      </button>
+                    </div>
+                    <p className="text-[9px] text-slate-500 mt-1.5 truncate font-medium">{card.sub}</p>
+                  </>
                 ) : (
                   <>
                     <p className={cn(
