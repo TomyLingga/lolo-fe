@@ -15,7 +15,7 @@ export default function DashboardPage() {
 
   // ─── Master data — fetched ONCE ─────────────────────────────────────────────
   const [allYards, setAllYards] = useState<YardMapYard[]>([]);
-  const [stats, setStats] = useState({ monthly_in: 0, monthly_out: 0, projected_revenue: 0 });
+  const [stats, setStats] = useState({ monthly_in: 0, monthly_out: 0, open_count: 0, projected_revenue: 0 });
   const [activities, setActivities] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -40,7 +40,7 @@ export default function DashboardPage() {
     try {
       const res = await dashboardApi.getYardMap();
       setAllYards(res.data.data.yards ?? []);
-      setStats(res.data.data.stats);
+      setStats({ open_count: 0, ...res.data.data.stats });
       setActivities(res.data.data.activities ?? []);
       setError(null);
     } catch {
@@ -89,7 +89,7 @@ export default function DashboardPage() {
   const statCards = [
     {
       label: "Kontainer OPEN",
-      value: loading ? "—" : String(totalActive),
+      value: loading ? "—" : String(stats.open_count),
       icon: (
         <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5}

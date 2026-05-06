@@ -237,16 +237,16 @@ export default function InvoicesPage() {
                 </tr>
                 <tr className="bg-slate-900/40">
                   <td className="px-2 py-1">
-                    <input className="input py-1 text-xs w-full bg-slate-800/50 border-slate-700" placeholder="Filter..." value={colFilters.invoice_number} onChange={e => setColFilters(p => ({...p, invoice_number: e.target.value}))} />
+                    <input className="input py-1 text-xs w-full bg-slate-800/50 border-slate-700" placeholder="Filter..." value={colFilters.invoice_number} onChange={e => setColFilters(p => ({ ...p, invoice_number: e.target.value }))} />
                   </td>
                   <td className="px-2 py-1">
-                    <input className="input py-1 text-xs w-full bg-slate-800/50 border-slate-700" placeholder="Filter..." value={colFilters.ff} onChange={e => setColFilters(p => ({...p, ff: e.target.value}))} />
+                    <input className="input py-1 text-xs w-full bg-slate-800/50 border-slate-700" placeholder="Filter..." value={colFilters.ff} onChange={e => setColFilters(p => ({ ...p, ff: e.target.value }))} />
                   </td>
                   <td className="px-2 py-1">
-                    <input className="input py-1 text-xs w-full bg-slate-800/50 border-slate-700" placeholder="Filter..." value={colFilters.date} onChange={e => setColFilters(p => ({...p, date: e.target.value}))} />
+                    <input className="input py-1 text-xs w-full bg-slate-800/50 border-slate-700" placeholder="Filter..." value={colFilters.date} onChange={e => setColFilters(p => ({ ...p, date: e.target.value }))} />
                   </td>
                   <td className="px-2 py-1">
-                    <input className="input py-1 text-xs w-full bg-slate-800/50 border-slate-700" placeholder="Filter..." value={colFilters.status} onChange={e => setColFilters(p => ({...p, status: e.target.value}))} />
+                    <input className="input py-1 text-xs w-full bg-slate-800/50 border-slate-700" placeholder="Filter..." value={colFilters.status} onChange={e => setColFilters(p => ({ ...p, status: e.target.value }))} />
                   </td>
                   <td className="px-2 py-1"></td>
                   <td className="px-2 py-1"></td>
@@ -364,11 +364,11 @@ export default function InvoicesPage() {
                   <>
                     <div className="flex gap-2 mb-3 bg-slate-800 p-2 rounded-lg border border-slate-700">
                       <div className="flex-1">
-                        <label className="text-[10px] text-slate-400 uppercase tracking-wider block mb-1">Tgl Keluar Dari</label>
+                        <label className="text-[10px] text-slate-400 uppercase tracking-wider block mb-1">Tgl Masuk/Keluar Dari</label>
                         <input type="date" className="input py-1 text-xs" value={filterRegFrom} onChange={e => setFilterRegFrom(e.target.value)} />
                       </div>
                       <div className="flex-1">
-                        <label className="text-[10px] text-slate-400 uppercase tracking-wider block mb-1">Tgl Keluar Sampai</label>
+                        <label className="text-[10px] text-slate-400 uppercase tracking-wider block mb-1">Tgl Masuk/Keluar Sampai</label>
                         <input type="date" className="input py-1 text-xs" value={filterRegTo} onChange={e => setFilterRegTo(e.target.value)} />
                       </div>
                       {(filterRegFrom || filterRegTo) && (
@@ -382,15 +382,26 @@ export default function InvoicesPage() {
                       {invoiceableRegs.filter(r => {
                         if (!filterRegFrom && !filterRegTo) return true;
                         const loloRecs = (r as any).lolo_records || [];
-                        const lastLoloOn = [...loloRecs].reverse().find((l: any) => l.operation_type === "LIFT_ON");
-                        if (!lastLoloOn) return false;
 
-                        const d = new Date(lastLoloOn.lolo_at);
-                        const outDateStr = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
-
-                        if (filterRegFrom && outDateStr < filterRegFrom) return false;
-                        if (filterRegTo && outDateStr > filterRegTo) return false;
-                        return true;
+                        if (r.record_status === 'OPEN') {
+                          // Registrasi OPEN: filter berdasarkan tanggal MASUK (LIFT_OFF)
+                          const firstLoloOff = loloRecs.find((l: any) => l.operation_type === "LIFT_OFF");
+                          if (!firstLoloOff) return true; // belum ada LOLO sama sekali, tetap tampilkan
+                          const d = new Date(firstLoloOff.lolo_at);
+                          const inDateStr = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+                          if (filterRegFrom && inDateStr < filterRegFrom) return false;
+                          if (filterRegTo && inDateStr > filterRegTo) return false;
+                          return true;
+                        } else {
+                          // Registrasi CLOSED: filter berdasarkan tanggal KELUAR (LIFT_ON)
+                          const lastLoloOn = [...loloRecs].reverse().find((l: any) => l.operation_type === "LIFT_ON");
+                          if (!lastLoloOn) return true; // tidak ada LIFT_ON, tetap tampilkan
+                          const d = new Date(lastLoloOn.lolo_at);
+                          const outDateStr = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+                          if (filterRegFrom && outDateStr < filterRegFrom) return false;
+                          if (filterRegTo && outDateStr > filterRegTo) return false;
+                          return true;
+                        }
                       }).map(r => {
                         const loloRecs = (r as any).lolo_records || [];
                         const lastLoloOn = [...loloRecs].reverse().find((l: any) => l.operation_type === "LIFT_ON");
