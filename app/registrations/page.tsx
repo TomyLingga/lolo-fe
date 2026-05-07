@@ -273,6 +273,8 @@ export default function RegistrationsPage() {
       ((r as any).lolo_records || []).forEach((l: any) => {
         loloData.push({
           "No. Container": r.container_number,
+          "Paket": (r as any).package?.code || "-",
+          "Status": r.record_status,
           "Operasi": l.operation_type === "LIFT_ON" ? "LIFT ON" : "LIFT OFF",
           "Tanggal": d(l.lolo_at),
           "Jam": formatTime(l.lolo_at),
