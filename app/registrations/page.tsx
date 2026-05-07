@@ -270,12 +270,36 @@ export default function RegistrationsPage() {
     // ── Sheet 2: Riwayat LOLO ────────────────────────────────────────────────
     const loloData: object[] = [];
     filtered.forEach(r => {
-      ((r as any).lolo_records || []).forEach((l: any) => {
+      const sortedLolos = [...((r as any).lolo_records || [])].sort((a, b) => 
+        new Date(a.lolo_at).getTime() - new Date(b.lolo_at).getTime()
+      );
+      
+      sortedLolos.forEach((l: any, index: number) => {
+        const dStr = l.lolo_at?.substring(0, 10);
+        let yardName = "-";
+        if (l.operation_type === "LIFT_OFF") {
+          // LIFT_OFF initiates a storage record
+          const s = ((r as any).storage_records || []).find((s: any) => s.start_date?.substring(0, 10) === dStr);
+          if (s && s.yard) yardName = s.yard.name;
+          else if (((r as any).storage_records || []).length > 0) yardName = (r as any).storage_records[0].yard?.name || "-";
+        } else {
+          // LIFT_ON closes a storage record
+          const s = ((r as any).storage_records || []).find((s: any) => s.end_date?.substring(0, 10) === dStr);
+          if (s && s.yard) yardName = s.yard.name;
+          else {
+            // Fallback to the last storage record
+            const recs = (r as any).storage_records || [];
+            if (recs.length > 0) yardName = recs[recs.length - 1].yard?.name || "-";
+          }
+        }
+
         loloData.push({
           "No. Container": r.container_number,
+          "Urutan LOLO": index + 1,
           "Paket": (r as any).package?.code || "-",
           "Status": r.record_status,
           "Operasi": l.operation_type === "LIFT_ON" ? "LIFT ON" : "LIFT OFF",
+          "Lokasi Yard": yardName,
           "Tanggal": d(l.lolo_at),
           "Jam": formatTime(l.lolo_at),
           "Kendaraan": `${l.vehicle_type || "-"} / ${l.vehicle_number || "-"}`,

@@ -21,7 +21,15 @@ export default function DashboardPage() {
 
   // ─── Master data ─────────────────────────────────────────────
   const [allYards, setAllYards] = useState<YardMapYard[]>([]);
-  const [stats, setStats] = useState({ monthly_in: 0, monthly_out: 0, open_count: 0, projected_revenue: 0, open_count_filtered: 0, container_filtered: 0 });
+  const [stats, setStats] = useState({ 
+    monthly_in: 0, 
+    monthly_out: 0, 
+    open_count: 0, 
+    projected_revenue: 0, 
+    open_count_filtered: 0, 
+    container_filtered: 0,
+    capacity_filtered: 0
+  });
   const [activities, setActivities] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -95,22 +103,20 @@ export default function DashboardPage() {
     )
     : allYards;
 
-  // ─── Stats derived from allYards ─────────────────────────────────────────────
-  const totalActive = allYards.reduce((s, y) => s + y.total_occupied, 0);
-  const totalYards = allYards.length;
+  const selectedYardName = selectedYard === "all" ? "Semua Yard" : yardsList.find(y => y.id === selectedYard)?.name || "Yard Terpilih";
+  const periodLabel = new Date(selectedYear, selectedMonth - 1).toLocaleString("id-ID", { month: "long", year: "numeric" });
 
   const statCards = [
     {
-      label: "Registrasi OPEN",
-      value: loading ? "—" : String(stats.open_count),
+      label: selectedYard === "all" ? "Total Registrasi OPEN" : "Registrasi OPEN (Yard)",
+      value: loading ? "—" : String(stats.open_count_filtered),
       icon: (
         <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5}
-            d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" />
         </svg>
       ),
-      accent: "emerald",
-      sub: "TOTAL",
+      accent: "indigo",
+      sub: `di ${selectedYardName}`,
     },
     {
       label: "Container Masuk",
@@ -121,7 +127,7 @@ export default function DashboardPage() {
         </svg>
       ),
       accent: "blue",
-      sub: `pada ${new Date(selectedYear, selectedMonth - 1).toLocaleString("id-ID", { month: "long", year: "numeric" })}`,
+      sub: `pada ${periodLabel} di ${selectedYardName}`,
     },
     {
       label: "Container Keluar",
@@ -132,7 +138,7 @@ export default function DashboardPage() {
         </svg>
       ),
       accent: "rose",
-      sub: `pada ${new Date(selectedYear, selectedMonth - 1).toLocaleString("id-ID", { month: "long", year: "numeric" })}`,
+      sub: `pada ${periodLabel} di ${selectedYardName}`,
     },
     ...(user?.role === "admin" ? [{
       label: "Proyeksi Pendapatan",
@@ -143,9 +149,43 @@ export default function DashboardPage() {
         </svg>
       ),
       accent: "emerald",
-      sub: `pada ${time.toLocaleString("id-ID", { month: "long", year: "numeric" })}`,
+      sub: `pada ${time.toLocaleString("id-ID", { month: "long", year: "numeric" })} di ${selectedYardName}`,
       isRevenue: true,
     }] : []),
+    {
+      label: "Container di Dalam Yard",
+      value: loading ? "—" : String(stats.container_filtered),
+      icon: (
+        <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M4 7v10c0 2.21 3.582 4 8 4s8-1.79 8-4V7M4 7c0 2.21 3.582 4 8 4s8-1.79 8-4M4 7c0-2.21 3.582-4 8-4s8 1.79 8 4m0 5c0 2.21-3.582 4-8 4s-8-1.79-8-4" />
+        </svg>
+      ),
+      accent: "emerald",
+      sub: `di ${selectedYardName}`,
+    },
+    {
+      label: "Container di Luar Yard",
+      value: loading ? "—" : String(Math.max(0, stats.open_count_filtered - stats.container_filtered)),
+      icon: (
+        <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+        </svg>
+      ),
+      accent: "amber",
+      sub: `di luar ${selectedYardName}`,
+    },
+    {
+      label: "Okupansi Yard",
+      value: loading ? "—" : `${stats.capacity_filtered > 0 ? Math.round((stats.container_filtered / stats.capacity_filtered) * 100) : 0}%`,
+      icon: (
+        <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M11 3.055A9.001 9.001 0 1020.945 13H11V3.055z" />
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M20.488 9H15V3.512A9.025 9.025 0 0120.488 9z" />
+        </svg>
+      ),
+      accent: "indigo",
+      sub: `${stats.container_filtered} dari ${stats.capacity_filtered || 0} slot terisi di ${selectedYardName}`,
+    },
     {
       label: "Waktu Sistem",
       value: loading ? "—" : time.toLocaleString("id-ID", { day: "2-digit", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit", second: "2-digit" }).replace(',', ''),
@@ -157,29 +197,6 @@ export default function DashboardPage() {
       ),
       accent: "amber",
       sub: "waktu lokal saat ini",
-    },
-    // New cards based on user request
-    {
-      label: selectedYard === "all" ? "Total Registrasi OPEN" : "Registrasi OPEN (Yard)",
-      value: loading ? "—" : String(stats.open_count_filtered),
-      icon: (
-        <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" />
-        </svg>
-      ),
-      accent: "indigo",
-      sub: selectedYard === "all" ? "di semua yard (filter)" : "di yard terpilih",
-    },
-    {
-      label: selectedYard === "all" ? "Total Container Fisik" : "Container Fisik (Yard)",
-      value: loading ? "—" : String(stats.container_filtered),
-      icon: (
-        <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M4 7v10c0 2.21 3.582 4 8 4s8-1.79 8-4V7M4 7c0 2.21 3.582 4 8 4s8-1.79 8-4M4 7c0-2.21 3.582-4 8-4s8 1.79 8 4m0 5c0 2.21-3.582 4-8 4s-8-1.79-8-4" />
-        </svg>
-      ),
-      accent: "blue",
-      sub: selectedYard === "all" ? "di semua yard (filter)" : "di yard terpilih",
     },
   ];
 
@@ -230,7 +247,7 @@ export default function DashboardPage() {
               </div>
               <div className="min-w-0 flex-1">
                 <p className="text-[8px] font-bold text-slate-500 uppercase tracking-[0.2em]">{card.label}</p>
-                {card.accent === "amber" ? (
+                {card.label === "Waktu Sistem" ? (
                   <div className="mt-0.5">
                     <p className="text-xl font-black text-white tracking-tighter drop-shadow-[0_0_8px_rgba(255,255,255,0.3)] leading-tight">
                       {time.toLocaleTimeString("id-ID", { hour: "2-digit", minute: "2-digit", second: "2-digit" })}
