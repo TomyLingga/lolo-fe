@@ -123,6 +123,8 @@ export const registrationsApi = {
   deactivate: (id: number) => api.delete(`/registrations/${id}`),
   close: (id: number, data: { remark: string }) =>
     api.post(`/registrations/${id}/close`, data),
+  reopen: (id: number) =>
+    api.put<{ data: Registration }>(`/registrations/${id}/reopen`),
 };
 
 // ─── Lolo Records ────────────────────────────────────────────────────────────
@@ -222,17 +224,20 @@ export interface DashboardActivity {
 }
 
 export const dashboardApi = {
-  getYardMap: () => api.get<{ 
+  getYardMap: (params?: { container_number?: string; yard_id?: number; month?: number; year?: number }) => api.get<{ 
     data: { 
       yards: YardMapYard[];
       stats: {
         monthly_in: number;
         monthly_out: number;
+        open_count: number;
         projected_revenue: number;
+        open_count_filtered: number;
+        container_filtered: number;
       };
       activities: DashboardActivity[];
     } 
-  }>("/dashboard/yard-map"),
+  }>("/dashboard/yard-map", { params }),
   getWarehouseMap: () =>
     api.get<{ data: any[] }>("/dashboard/warehouse-map"),
 };

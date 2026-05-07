@@ -3,7 +3,7 @@
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import AppLayout from "@/components/layout/AppLayout";
 import { getUser } from "@/lib/auth";
-import { dashboardApi, YardMapYard } from "@/lib/api";
+import { dashboardApi, yardsApi, YardMapYard } from "@/lib/api";
 import { cn } from "@/lib/utils";
 import dynamic from "next/dynamic";
 import Slideshow from "@/components/ui/Slideshow";
@@ -13,14 +13,19 @@ const YardMap = dynamic(() => import("@/components/dashboard/YardMap"), { ssr: f
 export default function DashboardPage() {
   const user = typeof window !== "undefined" ? getUser() : null;
 
-  // ─── Master data — fetched ONCE ─────────────────────────────────────────────
+  // ─── Filters State ────────────────────────────────────────────────────────
+  const [selectedYard, setSelectedYard] = useState<number | "all">("all");
+  const [selectedMonth, setSelectedMonth] = useState<number>(new Date().getMonth() + 1);
+  const [selectedYear, setSelectedYear] = useState<number>(new Date().getFullYear());
+  const [yardsList, setYardsList] = useState<{ id: number, name: string }[]>([]);
+
+  // ─── Master data ─────────────────────────────────────────────
   const [allYards, setAllYards] = useState<YardMapYard[]>([]);
-  const [stats, setStats] = useState({ monthly_in: 0, monthly_out: 0, open_count: 0, projected_revenue: 0 });
+  const [stats, setStats] = useState({ monthly_in: 0, monthly_out: 0, open_count: 0, projected_revenue: 0, open_count_filtered: 0, container_filtered: 0 });
   const [activities, setActivities] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [showRevenue, setShowRevenue] = useState(false);
-  const hasFetched = useRef(false);   // prevent StrictMode double-fire
 
   // ─── Local search — NO API re-call on search ─────────────────────────────────
   const [searchInput, setSearchInput] = useState("");
@@ -34,13 +39,25 @@ export default function DashboardPage() {
   }
   function clearSearch() { setSearchInput(""); setSearchQuery(""); }
 
-  // ─── Single fetch on mount ────────────────────────────────────────────────────
+  // ─── Fetch yards list ─────────────────────────────────────────────────────────
+  useEffect(() => {
+    yardsApi.getAll().then(res => setYardsList(res.data.data)).catch(() => { });
+  }, []);
+
+  // ─── Single fetch on mount & filter change ────────────────────────────────────
   const fetchYardMap = useCallback(async () => {
     setLoading(true);
     try {
-      const res = await dashboardApi.getYardMap();
+      const res = await dashboardApi.getYardMap({
+        yard_id: selectedYard !== "all" ? selectedYard : undefined,
+        month: selectedMonth,
+        year: selectedYear,
+      });
       setAllYards(res.data.data.yards ?? []);
-      setStats({ open_count: 0, ...res.data.data.stats });
+      setStats(prev => ({
+        ...prev,
+        ...res.data.data.stats
+      }));
       setActivities(res.data.data.activities ?? []);
       setError(null);
     } catch {
@@ -48,24 +65,20 @@ export default function DashboardPage() {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [selectedYard, selectedMonth, selectedYear]);
 
   const [time, setTime] = useState(new Date());
 
   useEffect(() => {
-    if (!hasFetched.current) {
-      hasFetched.current = true;
-      fetchYardMap();
-    }
-
+    fetchYardMap();
     const fetchTimer = setInterval(fetchYardMap, 120_000);
-    const clockTimer = setInterval(() => setTime(new Date()), 1000);
-
-    return () => {
-      clearInterval(fetchTimer);
-      clearInterval(clockTimer);
-    };
+    return () => clearInterval(fetchTimer);
   }, [fetchYardMap]);
+
+  useEffect(() => {
+    const clockTimer = setInterval(() => setTime(new Date()), 1000);
+    return () => clearInterval(clockTimer);
+  }, []);
 
   // ─── Client-side search filter ────────────────────────────────────────────────
   const yards: YardMapYard[] = searchQuery
@@ -88,7 +101,7 @@ export default function DashboardPage() {
 
   const statCards = [
     {
-      label: "Kontainer OPEN",
+      label: "Registrasi OPEN",
       value: loading ? "—" : String(stats.open_count),
       icon: (
         <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -97,7 +110,7 @@ export default function DashboardPage() {
         </svg>
       ),
       accent: "emerald",
-      sub: "sedang tersimpan di yard",
+      sub: "TOTAL",
     },
     {
       label: "Container Masuk",
@@ -108,7 +121,7 @@ export default function DashboardPage() {
         </svg>
       ),
       accent: "blue",
-      sub: `pada ${time.toLocaleString("id-ID", { month: "long", year: "numeric" })}`,
+      sub: `pada ${new Date(selectedYear, selectedMonth - 1).toLocaleString("id-ID", { month: "long", year: "numeric" })}`,
     },
     {
       label: "Container Keluar",
@@ -119,7 +132,7 @@ export default function DashboardPage() {
         </svg>
       ),
       accent: "rose",
-      sub: `pada ${time.toLocaleString("id-ID", { month: "long", year: "numeric" })}`,
+      sub: `pada ${new Date(selectedYear, selectedMonth - 1).toLocaleString("id-ID", { month: "long", year: "numeric" })}`,
     },
     ...(user?.role === "admin" ? [{
       label: "Proyeksi Pendapatan",
@@ -144,6 +157,29 @@ export default function DashboardPage() {
       ),
       accent: "amber",
       sub: "waktu lokal saat ini",
+    },
+    // New cards based on user request
+    {
+      label: selectedYard === "all" ? "Total Registrasi OPEN" : "Registrasi OPEN (Yard)",
+      value: loading ? "—" : String(stats.open_count_filtered),
+      icon: (
+        <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" />
+        </svg>
+      ),
+      accent: "indigo",
+      sub: selectedYard === "all" ? "di semua yard (filter)" : "di yard terpilih",
+    },
+    {
+      label: selectedYard === "all" ? "Total Container Fisik" : "Container Fisik (Yard)",
+      value: loading ? "—" : String(stats.container_filtered),
+      icon: (
+        <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M4 7v10c0 2.21 3.582 4 8 4s8-1.79 8-4V7M4 7c0 2.21 3.582 4 8 4s8-1.79 8-4M4 7c0-2.21 3.582-4 8-4s8 1.79 8 4m0 5c0 2.21-3.582 4-8 4s-8-1.79-8-4" />
+        </svg>
+      ),
+      accent: "blue",
+      sub: selectedYard === "all" ? "di semua yard (filter)" : "di yard terpilih",
     },
   ];
 
@@ -185,7 +221,7 @@ export default function DashboardPage() {
         />
 
         {/* Stats */}
-        <div className={cn("grid grid-cols-1 sm:grid-cols-2 gap-4", user?.role === "admin" ? "lg:grid-cols-5" : "lg:grid-cols-4")}>
+        <div className={cn("grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4", user?.role === "admin" ? "xl:grid-cols-4" : "")}>
           {statCards.map((card) => (
             <div key={card.label} className="card p-3 flex items-start gap-3 group hover:border-brand-500/50 transition-colors">
               <div className={`w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 ring-2 transition-transform group-hover:scale-110 ${accentMap[card.accent]}`}>
@@ -259,6 +295,42 @@ export default function DashboardPage() {
                       Peta Yard
                     </h2>
                     <p className="text-[10px] text-slate-500 font-medium">Klik blok untuk melihat detail slot & registrasi</p>
+                  </div>
+                </div>
+
+                <div className="flex flex-col sm:flex-row gap-4 justify-between">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <select
+                      value={selectedYard}
+                      onChange={(e) => setSelectedYard(e.target.value === "all" ? "all" : Number(e.target.value))}
+                      className="bg-slate-900 border border-slate-800 text-xs text-white font-medium rounded-xl py-2.5 pl-3 pr-8 focus:outline-none focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500 transition-all cursor-pointer appearance-none"
+                      style={{ backgroundImage: 'url("data:image/svg+xml,%3csvg xmlns=\'http://www.w3.org/2000/svg\' fill=\'none\' viewBox=\'0 0 20 20\'%3e%3cpath stroke=\'%2364748b\' stroke-linecap=\'round\' stroke-linejoin=\'round\' stroke-width=\'1.5\' d=\'M6 8l4 4 4-4\'/%3e%3c/svg%3e")', backgroundPosition: 'right 0.5rem center', backgroundRepeat: 'no-repeat', backgroundSize: '1.5em 1.5em' }}
+                    >
+                      <option value="all">Semua Yard</option>
+                      {yardsList.map(y => <option key={y.id} value={y.id}>{y.name}</option>)}
+                    </select>
+
+                    <select
+                      value={selectedMonth}
+                      onChange={(e) => setSelectedMonth(Number(e.target.value))}
+                      className="bg-slate-900 border border-slate-800 text-xs text-white font-medium rounded-xl py-2.5 pl-3 pr-8 focus:outline-none focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500 transition-all cursor-pointer appearance-none"
+                      style={{ backgroundImage: 'url("data:image/svg+xml,%3csvg xmlns=\'http://www.w3.org/2000/svg\' fill=\'none\' viewBox=\'0 0 20 20\'%3e%3cpath stroke=\'%2364748b\' stroke-linecap=\'round\' stroke-linejoin=\'round\' stroke-width=\'1.5\' d=\'M6 8l4 4 4-4\'/%3e%3c/svg%3e")', backgroundPosition: 'right 0.5rem center', backgroundRepeat: 'no-repeat', backgroundSize: '1.5em 1.5em' }}
+                    >
+                      {Array.from({ length: 12 }, (_, i) => i + 1).map(m => (
+                        <option key={m} value={m}>{new Date(2000, m - 1).toLocaleString('id-ID', { month: 'long' })}</option>
+                      ))}
+                    </select>
+
+                    <select
+                      value={selectedYear}
+                      onChange={(e) => setSelectedYear(Number(e.target.value))}
+                      className="bg-slate-900 border border-slate-800 text-xs text-white font-medium rounded-xl py-2.5 pl-3 pr-8 focus:outline-none focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500 transition-all cursor-pointer appearance-none"
+                      style={{ backgroundImage: 'url("data:image/svg+xml,%3csvg xmlns=\'http://www.w3.org/2000/svg\' fill=\'none\' viewBox=\'0 0 20 20\'%3e%3cpath stroke=\'%2364748b\' stroke-linecap=\'round\' stroke-linejoin=\'round\' stroke-width=\'1.5\' d=\'M6 8l4 4 4-4\'/%3e%3c/svg%3e")', backgroundPosition: 'right 0.5rem center', backgroundRepeat: 'no-repeat', backgroundSize: '1.5em 1.5em' }}
+                    >
+                      {Array.from({ length: 5 }, (_, i) => new Date().getFullYear() - 2 + i).map(y => (
+                        <option key={y} value={y}>{y}</option>
+                      ))}
+                    </select>
                   </div>
                 </div>
 

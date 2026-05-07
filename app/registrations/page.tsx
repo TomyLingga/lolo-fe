@@ -66,6 +66,8 @@ export default function RegistrationsPage() {
   const [closeConfirm, setCloseConfirm] = useState(false);
   const [closeRemark, setCloseRemark] = useState("");
 
+  const [reopenConfirm, setReopenConfirm] = useState(false);
+
   const fetchTimeout = useRef<NodeJS.Timeout | null>(null);
 
   async function fetchData() {
@@ -409,6 +411,19 @@ export default function RegistrationsPage() {
   }
   function openDeactivate(reg: Registration) { setSelectedReg(reg); setDeactivateConfirm(true); }
   function openEdit(reg: Registration) { setEditReg(reg); setFormOpen(true); }
+  function openReopen(reg: Registration) { setSelectedReg(reg); setReopenConfirm(true); }
+
+  async function handleReopen() {
+    if (!selectedReg) return;
+    setActionLoading(true);
+    try {
+      await registrationsApi.reopen(selectedReg.id);
+      toast.success("Registrasi berhasil dibuka kembali (Re-Open)");
+      setReopenConfirm(false);
+      fetchData();
+    } catch (err) { toast.error(getErrorMessage(err)); }
+    finally { setActionLoading(false); }
+  }
 
   function handleEditLolo(loloId: number) {
     setSelectedLoloId(loloId);
@@ -451,19 +466,63 @@ export default function RegistrationsPage() {
               </button>
             ))}
           </div>
+          {tab === "OPEN" && (
+            <div className="flex gap-4">
+              <div className="card p-4 bg-indigo-500/10 border-indigo-500/20 w-full sm:w-48">
+                <p className="text-[10px] text-indigo-400 font-bold uppercase tracking-widest mb-1">Total Registrasi OPEN</p>
+                <p className="text-2xl font-black text-white">{filtered.length}</p>
+              </div>
+            </div>
+          )}
+
+          {tab === "ALL" && (
+            <div className="flex gap-4">
+              <div className="card p-4 bg-blue-500/10 border-blue-500/20 w-full sm:w-56">
+                <p className="text-[10px] text-blue-400 font-bold uppercase tracking-widest mb-1">Total Container Masuk</p>
+                <p className="text-2xl font-black text-white">
+                  {filtered.filter(r => {
+                    if (r.is_active === false) return false;
+                    const loloOff = (r as any).lolo_records?.find((l: any) => l.operation_type === "LIFT_OFF");
+                    if (!loloOff) return false;
+                    const d = loloOff.lolo_at.substring(0, 10);
+                    return (!dateFrom || d >= dateFrom) && (!dateTo || d <= dateTo);
+                  }).length}
+                </p>
+                <p className="text-[8px] text-slate-500 mt-1 uppercase tracking-wider font-medium">LIFT OFF dlm rentang tanggal</p>
+              </div>
+              <div className="card p-4 bg-rose-500/10 border-rose-500/20 w-full sm:w-56">
+                <p className="text-[10px] text-rose-400 font-bold uppercase tracking-widest mb-1">Total Container Keluar</p>
+                <p className="text-2xl font-black text-white">
+                  {filtered.filter(r => {
+                    if (r.is_active === false) return false;
+                    if (r.record_status !== "CLOSED") return false;
+                    const loloOn = [...((r as any).lolo_records || [])].reverse().find((l: any) => l.operation_type === "LIFT_ON");
+                    if (!loloOn) return false;
+                    const d = loloOn.lolo_at.substring(0, 10);
+                    return (!dateFrom || d >= dateFrom) && (!dateTo || d <= dateTo);
+                  }).length}
+                </p>
+                <p className="text-[8px] text-slate-500 mt-1 uppercase tracking-wider font-medium">LIFT ON dlm rentang tanggal</p>
+              </div>
+            </div>
+          )}
+
           {tab !== "OPEN" && (
-            <div className="flex flex-wrap gap-3 items-end">
-              <div>
-                <label className="label">Dari Tanggal</label>
-                <input className="input" type="date" value={dateFrom} onChange={e => setDateFrom(e.target.value)} />
+            <div className="flex flex-col gap-2">
+              <p className="text-xs text-slate-400 font-medium">Filter Tanggal Operasional (LIFT OFF Masuk / LIFT ON Keluar)</p>
+              <div className="flex flex-wrap gap-3 items-end">
+                <div>
+                  <label className="label">Dari Tanggal</label>
+                  <input className="input" type="date" value={dateFrom} onChange={e => setDateFrom(e.target.value)} />
+                </div>
+                <div>
+                  <label className="label">Sampai Tanggal</label>
+                  <input className="input" type="date" value={dateTo} onChange={e => setDateTo(e.target.value)} />
+                </div>
+                {(dateFrom || dateTo) && (
+                  <button className="btn-ghost btn-sm" onClick={() => { setDateFrom(""); setDateTo(""); }}>Reset</button>
+                )}
               </div>
-              <div>
-                <label className="label">Sampai Tanggal</label>
-                <input className="input" type="date" value={dateTo} onChange={e => setDateTo(e.target.value)} />
-              </div>
-              {(dateFrom || dateTo) && (
-                <button className="btn-ghost btn-sm" onClick={() => { setDateFrom(""); setDateTo(""); }}>Reset</button>
-              )}
             </div>
           )}
           <input className="input max-w-sm" placeholder="Cari no. container, FF, DO..." value={search}
@@ -652,6 +711,14 @@ export default function RegistrationsPage() {
                             </button>
                           )}
 
+                          {isAdmin && reg.record_status === "CLOSED" && (
+                            <button onClick={() => openReopen(reg)} className="btn btn-sm btn-warning" title="Buka Kembali (Re-Open)">
+                              <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                              </svg>
+                            </button>
+                          )}
+
                           {isAdmin && (
                             <button onClick={() => openEdit(reg)} className="btn btn-sm btn-ghost" title="Edit">
                               <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -735,6 +802,12 @@ export default function RegistrationsPage() {
           message={`${selectedReg?.is_active ? "Nonaktifkan" : "Aktifkan"} registrasi ${selectedReg?.container_number}?`}
           confirmLabel={selectedReg?.is_active ? "Nonaktifkan" : "Aktifkan"}
           danger={selectedReg?.is_active} loading={actionLoading} />
+
+        <ConfirmDialog open={reopenConfirm} onClose={() => setReopenConfirm(false)} onConfirm={handleReopen}
+          title="Buka Kembali Registrasi"
+          message={`Anda yakin ingin melakukan Re-Open pada registrasi ${selectedReg?.container_number}? Ini akan membuka kembali storage record terakhir dan merubah status menjadi OPEN.`}
+          confirmLabel="Re-Open"
+          danger={true} loading={actionLoading} />
       </div>
     </AppLayout>
   );

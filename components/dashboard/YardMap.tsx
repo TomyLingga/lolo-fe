@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
 import { YardMapBlock, YardMapYard } from "@/lib/api";
+import { cn } from "@/lib/utils";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -13,10 +14,11 @@ interface SlotKey { l: number; w: number; h: number; }
 interface SlotGridProps {
   block: YardMapBlock;
   yardName: string;
+  searchQuery?: string;
   onClose: () => void;
 }
 
-function SlotGridPanel({ block, yardName, onClose }: SlotGridProps) {
+function SlotGridPanel({ block, yardName, searchQuery, onClose }: SlotGridProps) {
   const [selectedSlot, setSelectedSlot] = useState<SlotKey | null>(null);
   const [mounted, setMounted] = useState(false);
 
@@ -95,9 +97,19 @@ function SlotGridPanel({ block, yardName, onClose }: SlotGridProps) {
                       {Array.from({ length: block.max_width }, (_, wi) => {
                         const w = wi + 1;
                         // Stack (heights) for this L-W position
-                        const stackCount = Array.from({ length: block.max_height }, (_, hi): number =>
-                          slotMap.has(`${l}-${w}-${hi + 1}`) ? 1 : 0
-                        ).reduce((a, b) => a + b, 0);
+                        let stackCount = 0;
+                        let hasHighlightMatch = false;
+
+                        for (let hi = 0; hi < block.max_height; hi++) {
+                          const key = `${l}-${w}-${hi + 1}`;
+                          if (slotMap.has(key)) {
+                            stackCount++;
+                            const regs = slotMap.get(key) ?? [];
+                            if (searchQuery && regs.some(r => r.container_number.toUpperCase().includes(searchQuery.toUpperCase()))) {
+                              hasHighlightMatch = true;
+                            }
+                          }
+                        }
 
                         const isSelected = selectedSlot?.l === l && selectedSlot?.w === w;
 
@@ -108,7 +120,9 @@ function SlotGridPanel({ block, yardName, onClose }: SlotGridProps) {
                             title={`Blok ${block.block_code} L${l} W${w} — ${stackCount} kontainer`}
                             className={[
                               "flex flex-col items-center justify-center rounded-lg border transition-all w-12 h-14 text-xs font-bold",
-                              stackCount > 0 && !isSelected
+                              hasHighlightMatch
+                                ? "bg-amber-500/25 border-amber-400 text-amber-300 ring-2 ring-amber-400/50 animate-pulse"
+                                : stackCount > 0 && !isSelected
                                 ? "bg-emerald-500/15 border-emerald-500/40 text-emerald-300"
                                 : isSelected
                                 ? "bg-brand-500/25 border-brand-400 text-brand-300 ring-2 ring-brand-400/30"
@@ -159,19 +173,22 @@ function SlotGridPanel({ block, yardName, onClose }: SlotGridProps) {
                       <p className="text-[10px] text-slate-500 mb-1 font-bold uppercase tracking-wider">Level {h}</p>
                       {regs.length === 0 ? (
                         <p className="text-xs text-slate-600 italic">Kosong</p>
-                      ) : regs.map((reg) => (
-                        <div key={reg.id} className="mb-2 last:mb-0">
-                          <p className="font-mono font-bold text-white text-xs">{reg.container_number}</p>
-                          {reg.freight_forwarder && (
-                            <p className="text-xs text-slate-400 truncate">{reg.freight_forwarder.name}</p>
-                          )}
-                          <div className="flex gap-1 mt-1 flex-wrap">
-                            {reg.size && <span className="px-1 py-0.5 rounded text-[10px] bg-brand-500/15 text-brand-400">{reg.size.code}</span>}
-                            {reg.type && <span className="px-1 py-0.5 rounded text-[10px] bg-slate-700 text-slate-300">{reg.type.code}</span>}
+                      ) : regs.map((reg) => {
+                        const isHighlighted = searchQuery && reg.container_number.toUpperCase().includes(searchQuery.toUpperCase());
+                        return (
+                          <div key={reg.id} className={cn("mb-2 last:mb-0 rounded", isHighlighted ? "bg-amber-500/20 p-2 border border-amber-500/40" : "")}>
+                            <p className={cn("font-mono font-bold text-xs", isHighlighted ? "text-amber-400" : "text-white")}>{reg.container_number}</p>
+                            {reg.freight_forwarder && (
+                              <p className={cn("text-xs truncate", isHighlighted ? "text-amber-500/80" : "text-slate-400")}>{reg.freight_forwarder.name}</p>
+                            )}
+                            <div className="flex gap-1 mt-1 flex-wrap">
+                              {reg.size && <span className="px-1 py-0.5 rounded text-[10px] bg-brand-500/15 text-brand-400">{reg.size.code}</span>}
+                              {reg.type && <span className="px-1 py-0.5 rounded text-[10px] bg-slate-700 text-slate-300">{reg.type.code}</span>}
+                            </div>
+                            <p className="text-[10px] text-slate-600 mt-1">Sejak: {new Date(reg.start_date).toLocaleDateString("id-ID", { day: "2-digit", month: "short", year: "numeric" })}</p>
                           </div>
-                          <p className="text-[10px] text-slate-600 mt-1">Sejak: {new Date(reg.start_date).toLocaleDateString("id-ID", { day: "2-digit", month: "short", year: "numeric" })}</p>
-                        </div>
-                      ))}
+                        );
+                      })}
                     </div>
                   );
                 })}
@@ -379,6 +396,7 @@ export default function YardMap({ yards, loading, error, searchQuery, onRetry }:
         <SlotGridPanel
           block={selectedBlock}
           yardName={selectedYardName}
+          searchQuery={searchQuery}
           onClose={() => setSelectedBlock(null)}
         />
       )}
