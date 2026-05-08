@@ -456,6 +456,9 @@ export default function RegistrationsPage() {
     setLoloEditOpen(true);
   }
 
+  // Sinkronisasi data detail (modal) dengan data terbaru dari list agar perubahan langsung terlihat
+  const activeReg = data.find(r => r.id === selectedReg?.id) || selectedReg;
+
   return (
     <AppLayout>
       <div className="p-4 sm:p-6">
@@ -805,22 +808,22 @@ export default function RegistrationsPage() {
 
         <RegistrationFormModal open={formOpen} onClose={() => setFormOpen(false)}
           registration={editReg} isAdmin={isAdmin!} onSaved={() => { setFormOpen(false); fetchData(); }} />
-        <LoloFormModal open={loloOpen} onClose={() => setLoloOpen(false)} registration={selectedReg}
+        <LoloFormModal open={loloOpen} onClose={() => setLoloOpen(false)} registration={activeReg}
           onSaved={() => { setLoloOpen(false); fetchData(); }} />
-        <StorageFormModal open={storageOpen} onClose={() => setStorageOpen(false)} registration={selectedReg}
+        <StorageFormModal open={storageOpen} onClose={() => setStorageOpen(false)} registration={activeReg}
           onSaved={() => { setStorageOpen(false); fetchData(); }} />
-        <LoloTimelineModal open={loloTimeOpen} onClose={() => setLoloTimeOpen(false)} registration={selectedReg}
+        <LoloTimelineModal open={loloTimeOpen} onClose={() => setLoloTimeOpen(false)} registration={activeReg}
           isAdmin={isAdmin} onEditLolo={handleEditLolo} />
         <LoloEditModal open={loloEditOpen} onClose={() => setLoloEditOpen(false)} loloId={selectedLoloId}
           onSaved={() => { setLoloEditOpen(false); fetchData(); }} />
-        <StorageTimelineModal open={storageTimeOpen} onClose={() => setStorageTimeOpen(false)} registration={selectedReg} />
-        <RemarkModal open={remarkOpen} onClose={() => setRemarkOpen(false)} registration={selectedReg} readOnly={remarkReadOnly} />
+        <StorageTimelineModal open={storageTimeOpen} onClose={() => setStorageTimeOpen(false)} registration={activeReg} />
+        <RemarkModal open={remarkOpen} onClose={() => setRemarkOpen(false)} registration={activeReg} readOnly={remarkReadOnly} />
 
         {/* CUSTOM MODAL UNTUK TUTUP REGISTRASI */}
         <Modal open={closeConfirm} onClose={() => setCloseConfirm(false)} title="Tutup Registrasi" size="md">
           <form onSubmit={handleClose} className="space-y-4">
             <p className="text-sm text-slate-300">
-              Apakah Anda yakin ingin menutup registrasi kontainer <span className="font-bold text-white">{selectedReg?.container_number}</span>?
+              Apakah Anda yakin ingin menutup registrasi kontainer <span className="font-bold text-white">{activeReg?.container_number}</span>?
             </p>
             <div>
               <label className="label">Catatan Penutupan <span className="text-red-400">*</span></label>
@@ -843,14 +846,14 @@ export default function RegistrationsPage() {
         </Modal>
 
         <ConfirmDialog open={deactivateConfirm} onClose={() => setDeactivateConfirm(false)} onConfirm={handleDeactivate}
-          title={selectedReg?.is_active ? "Nonaktifkan Registrasi" : "Aktifkan Registrasi"}
-          message={`${selectedReg?.is_active ? "Nonaktifkan" : "Aktifkan"} registrasi ${selectedReg?.container_number}?`}
-          confirmLabel={selectedReg?.is_active ? "Nonaktifkan" : "Aktifkan"}
-          danger={selectedReg?.is_active} loading={actionLoading} />
+          title={activeReg?.is_active ? "Nonaktifkan Registrasi" : "Aktifkan Registrasi"}
+          message={`${activeReg?.is_active ? "Nonaktifkan" : "Aktifkan"} registrasi ${activeReg?.container_number}?`}
+          confirmLabel={activeReg?.is_active ? "Nonaktifkan" : "Aktifkan"}
+          danger={activeReg?.is_active} loading={actionLoading} />
 
         <ConfirmDialog open={reopenConfirm} onClose={() => setReopenConfirm(false)} onConfirm={handleReopen}
           title="Buka Kembali Registrasi"
-          message={`Anda yakin ingin melakukan Re-Open pada registrasi ${selectedReg?.container_number}? Ini akan membuka kembali storage record terakhir dan merubah status menjadi OPEN.`}
+          message={`Anda yakin ingin melakukan Re-Open pada registrasi ${activeReg?.container_number}? Ini akan membuka kembali storage record terakhir dan merubah status menjadi OPEN.`}
           confirmLabel="Re-Open"
           danger={true} loading={actionLoading} />
       </div>
