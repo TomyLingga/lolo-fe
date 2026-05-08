@@ -21,12 +21,14 @@ export default function DashboardPage() {
 
   // ─── Master data ─────────────────────────────────────────────
   const [allYards, setAllYards] = useState<YardMapYard[]>([]);
-  const [stats, setStats] = useState({ 
-    monthly_in: 0, 
-    monthly_out: 0, 
-    open_count: 0, 
-    projected_revenue: 0, 
-    open_count_filtered: 0, 
+  const [stats, setStats] = useState({
+    monthly_in: 0,
+    monthly_out: 0,
+    open_count: 0,
+    lolo_off_count: 0,
+    lolo_on_count: 0,
+    projected_revenue: 0,
+    open_count_filtered: 0,
     container_filtered: 0,
     capacity_filtered: 0
   });
@@ -119,6 +121,17 @@ export default function DashboardPage() {
       sub: `di ${selectedYardName}`,
     },
     {
+      label: "Total Lift Off (Bulan Ini)",
+      value: loading ? "—" : String(stats.lolo_off_count),
+      icon: (
+        <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
+        </svg>
+      ),
+      accent: "blue",
+      sub: `Total transaksi lifting masuk`,
+    },
+    {
       label: "Container Masuk",
       value: loading ? "—" : String(stats.monthly_in),
       icon: (
@@ -141,7 +154,7 @@ export default function DashboardPage() {
       sub: `pada ${periodLabel} di ${selectedYardName}`,
     },
     ...(user?.role === "admin" ? [{
-      label: "Proyeksi Pendapatan",
+      label: `Proyeksi Pendapatan ${periodLabel}`,
       value: loading ? "—" : new Intl.NumberFormat("id-ID", { style: "currency", currency: "IDR", maximumFractionDigits: 0 }).format(stats.projected_revenue),
       icon: (
         <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -149,7 +162,7 @@ export default function DashboardPage() {
         </svg>
       ),
       accent: "emerald",
-      sub: `pada ${time.toLocaleString("id-ID", { month: "long", year: "numeric" })} di ${selectedYardName}`,
+      sub: `Realisasi LOLO & Storage (Inc. FT) di ${selectedYardName}`,
       isRevenue: true,
     }] : []),
     {
@@ -162,6 +175,17 @@ export default function DashboardPage() {
       ),
       accent: "emerald",
       sub: `di ${selectedYardName}`,
+    },
+    {
+      label: "Total Lift On (Bulan Ini)",
+      value: loading ? "—" : String(stats.lolo_on_count),
+      icon: (
+        <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+        </svg>
+      ),
+      accent: "rose",
+      sub: `Total transaksi lifting keluar`,
     },
     {
       label: "Container di Luar Yard",
@@ -238,7 +262,7 @@ export default function DashboardPage() {
         />
 
         {/* Stats */}
-        <div className={cn("grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4", user?.role === "admin" ? "xl:grid-cols-4" : "")}>
+        <div className={cn("grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4")}>
           {statCards.map((card) => (
             <div key={card.label} className="card p-3 flex items-start gap-3 group hover:border-brand-500/50 transition-colors">
               <div className={`w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 ring-2 transition-transform group-hover:scale-110 ${accentMap[card.accent]}`}>

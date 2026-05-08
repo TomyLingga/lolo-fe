@@ -270,10 +270,10 @@ export default function RegistrationsPage() {
     // ── Sheet 2: Riwayat LOLO ────────────────────────────────────────────────
     const loloData: object[] = [];
     filtered.forEach(r => {
-      const sortedLolos = [...((r as any).lolo_records || [])].sort((a, b) => 
+      const sortedLolos = [...((r as any).lolo_records || [])].sort((a, b) =>
         new Date(a.lolo_at).getTime() - new Date(b.lolo_at).getTime()
       );
-      
+
       sortedLolos.forEach((l: any, index: number) => {
         const dStr = l.lolo_at?.substring(0, 10);
         let yardName = "-";
@@ -501,20 +501,30 @@ export default function RegistrationsPage() {
             </div>
           )}
 
-          {tab === "ALL" && (
+          {tab === "CLOSED" && (
             <div className="flex gap-4">
+              <div className="card p-4 bg-emerald-500/10 border-emerald-500/20 w-full sm:w-48">
+                <p className="text-[10px] text-emerald-400 font-bold uppercase tracking-widest mb-1">Total Registrasi CLOSED</p>
+                <p className="text-2xl font-black text-white">{filtered.length}</p>
+              </div>
+            </div>
+          )}
+
+          {tab === "ALL" && (
+            <div className="flex flex-wrap gap-4">
               <div className="card p-4 bg-blue-500/10 border-blue-500/20 w-full sm:w-56">
-                <p className="text-[10px] text-blue-400 font-bold uppercase tracking-widest mb-1">Total Container Masuk</p>
+                <p className="text-[10px] text-blue-400 font-bold uppercase tracking-widest mb-1">Total Registrasi Masuk</p>
                 <p className="text-2xl font-black text-white">
-                  {filtered.filter(r => {
-                    if (r.is_active === false) return false;
-                    const loloOff = (r as any).lolo_records?.find((l: any) => l.operation_type === "LIFT_OFF");
-                    if (!loloOff) return false;
-                    const d = loloOff.lolo_at.substring(0, 10);
-                    return (!dateFrom || d >= dateFrom) && (!dateTo || d <= dateTo);
-                  }).length}
+                  {filtered.filter(r => r.is_active !== false).length}
                 </p>
                 <p className="text-[8px] text-slate-500 mt-1 uppercase tracking-wider font-medium">LIFT OFF dlm rentang tanggal</p>
+              </div>
+              {/* <div className="card p-4 bg-emerald-500/10 border-emerald-500/20 w-full sm:w-56">
+                <p className="text-[10px] text-emerald-400 font-bold uppercase tracking-widest mb-1">Registrasi Open</p>
+                <p className="text-2xl font-black text-white">
+                  {filtered.filter(r => r.is_active !== false && r.record_status === "OPEN").length}
+                </p>
+                <p className="text-[8px] text-slate-500 mt-1 uppercase tracking-wider font-medium">Open dlm rentang tanggal</p>
               </div>
               <div className="card p-4 bg-rose-500/10 border-rose-500/20 w-full sm:w-56">
                 <p className="text-[10px] text-rose-400 font-bold uppercase tracking-widest mb-1">Total Container Keluar</p>
@@ -529,13 +539,22 @@ export default function RegistrationsPage() {
                   }).length}
                 </p>
                 <p className="text-[8px] text-slate-500 mt-1 uppercase tracking-wider font-medium">LIFT ON dlm rentang tanggal</p>
+              </div> */}
+              <div className="card p-4 bg-slate-500/10 border-slate-500/20 w-full sm:w-56">
+                <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest mb-1">Reg. Tidak Aktif / Dihapus</p>
+                <p className="text-2xl font-black text-white">
+                  {filtered.filter(r => r.is_active === false).length}
+                </p>
+                <p className="text-[8px] text-slate-500 mt-1 uppercase tracking-wider font-medium">Total record non-aktif dlm rentang tanggal</p>
               </div>
             </div>
           )}
 
           {tab !== "OPEN" && (
             <div className="flex flex-col gap-2">
-              <p className="text-xs text-slate-400 font-medium">Filter Tanggal Operasional (LIFT OFF Masuk / LIFT ON Keluar)</p>
+              <p className="text-xs text-slate-400 font-medium">
+                {tab === "ALL" ? "Filter Tanggal Masuk (LIFT OFF Pertama)" : "Filter Tanggal Keluar (LIFT ON Terakhir)"}
+              </p>
               <div className="flex flex-wrap gap-3 items-end">
                 <div>
                   <label className="label">Dari Tanggal</label>
