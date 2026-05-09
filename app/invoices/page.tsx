@@ -348,7 +348,7 @@ export default function InvoicesPage() {
 
             {selectedFf && (
               <div>
-                <label className="label">Pilih Registrasi <span className="text-red-400">*</span></label>
+                <label className="label">Pilih Registrasi yang Akan di Invoice<span className="text-red-400">*</span></label>
 
                 {fetchingRegs ? (
                   <div className="flex justify-center items-center py-6 text-slate-500 text-sm gap-2">
@@ -414,7 +414,14 @@ export default function InvoicesPage() {
                             <div className="flex flex-col flex-1 min-w-0">
                               <div className="flex items-center justify-between gap-2">
                                 <div className="flex items-center gap-2">
-                                  <span className="font-mono text-sm font-bold text-white">{r.container_number}</span>
+                                  <span className="font-mono text-sm font-bold text-white">
+                                    {r.container_number}
+                                    {((r as any).storage_records && (r as any).storage_records.length > 0) && (
+                                      <span className="text-slate-400 font-normal ml-1.5">
+                                        - ({(r as any).storage_records[(r as any).storage_records.length - 1].yard?.code})
+                                      </span>
+                                    )}
+                                  </span>
                                   {/* Badge status registrasi */}
                                   {r.record_status === 'OPEN' ? (
                                     <span className="text-[9px] font-black px-1.5 py-0.5 rounded bg-emerald-500/15 text-emerald-400 border border-emerald-500/30 uppercase">AKTIF</span>
