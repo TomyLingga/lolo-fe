@@ -14,7 +14,10 @@ interface Props {
 
 export default function LoloTimelineModal({ open, onClose, registration, isAdmin, onEditLolo }: Props) {
   // Langsung ambil dari data registrasi, tidak perlu fetch API lagi
-  const records = registration?.lolo_records || [];
+  // Urutkan berdasarkan waktu LOLO (asc) agar kronologis
+  const records = [...(registration?.lolo_records || [])].sort((a, b) => 
+    new Date(a.lolo_at).getTime() - new Date(b.lolo_at).getTime()
+  );
 
   const items = records.map(r => ({
     id: r.id,

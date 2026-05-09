@@ -561,7 +561,9 @@ export default function RegistrationsPage() {
                   <tr><td colSpan={9} className="px-4 py-12 text-center text-slate-500">Tidak ada data</td></tr>
                 ) : filtered.map(reg => {
 
-                  const loloRecs = (reg as any).lolo_records || [];
+                  const loloRecs = [...((reg as any).lolo_records || [])].sort((a, b) => 
+                    new Date(a.lolo_at).getTime() - new Date(b.lolo_at).getTime()
+                  );
                   const actualLastLolo = loloRecs.length > 0 ? loloRecs[loloRecs.length - 1].operation_type : null;
 
                   return (
