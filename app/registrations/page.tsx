@@ -141,99 +141,6 @@ export default function RegistrationsPage() {
     else { setSortCol(col); setSortOrd("asc"); }
   };
 
-  // const handleExportExcel = () => {
-  //   if (filtered.length === 0) {
-  //     toast.error("Tidak ada data untuk diexport");
-  //     return;
-  //   }
-
-  //   const regData = filtered.map(r => {
-  //     const loloRecs = (r as any).lolo_records || [];
-  //     return {
-  //       "ID": r.id,
-  //       "No. Container": r.container_number,
-  //       "Paket": (r as any).package?.code || "-",
-  //       "Freight Forwarder": (r as any).freight_forwarders?.name || "-",
-  //       "Tenant": (r as any).shipper_tenant?.name || "-",
-  //       "No. DO/JO": r.no_do_jo || "-",
-  //       "Ukuran": (r as any).size?.description || "-",
-  //       "Tipe": (r as any).type?.description || "-",
-  //       "Status Record": r.record_status,
-  //       "Tgl Masuk": formatDateRaw(loloRecs.find((l: any) => l.operation_type === "LIFT_OFF")?.lolo_at || r.created_at),
-  //       "Jam Masuk": formatTime(loloRecs.find((l: any) => l.operation_type === "LIFT_OFF")?.lolo_at || r.created_at),
-  //       "Tgl Keluar": [...loloRecs].reverse().find((l: any) => l.operation_type === "LIFT_ON")?.lolo_at ? formatDateRaw([...loloRecs].reverse().find((l: any) => l.operation_type === "LIFT_ON")?.lolo_at) : "-",
-  //       "Jam Keluar": [...loloRecs].reverse().find((l: any) => l.operation_type === "LIFT_ON")?.lolo_at ? formatTime([...loloRecs].reverse().find((l: any) => l.operation_type === "LIFT_ON")?.lolo_at) : "-",
-  //     };
-  //   });
-
-  //   const loloData: any[] = [];
-  //   const storageData: any[] = [];
-  //   const remarkData: any[] = [];
-
-  //   filtered.forEach(r => {
-  //     const loloRecs = (r as any).lolo_records || [];
-  //     loloRecs.forEach((l: any) => {
-  //       loloData.push({
-  //         "No. Container": r.container_number,
-  //         "Operasi": l.operation_type === "LIFT_ON" ? "LIFT ON" : "LIFT OFF",
-  //         "Tanggal": formatDateRaw(l.lolo_at),
-  //         "Jam": formatTime(l.lolo_at),
-  //         "Kendaraan": `${l.vehicle_type || "-"} / ${l.vehicle_number || "-"}`,
-  //         "Status Kargo": l.cargo_status?.description || "-",
-  //         "Tarif": l.tariff_price ? Number(l.tariff_price) : 0,
-  //         "Operator": l.created_by ? `${l.created_by.name} (${l.created_by.jabatan || "-"})` : "-",
-  //       });
-  //     });
-
-  //     const storageRecs = (r as any).storage_records || [];
-  //     storageRecs.forEach((s: any) => {
-  //       storageData.push({
-  //         "No. Container": r.container_number,
-  //         "Mulai": formatDateRaw(s.start_date),
-  //         "Selesai": s.end_date ? formatDateRaw(s.end_date) : "Masih di Storage",
-  //         "Lokasi": `${s.yard?.name || "-"} / Block ${s.block?.block_code || "-"}`,
-  //         "Posisi": `L${s.pos_length} W${s.pos_width} H${s.pos_height}`,
-  //         "Status Kargo": s.cargo_status?.description || "-",
-  //         "Tarif/Hari": s.storage_price_per_day ? Number(s.storage_price_per_day) : 0,
-  //         "Operator": s.moved_by ? `${s.moved_by.name} (${s.moved_by.jabatan || "-"})` : "-",
-  //       });
-  //     });
-
-  //     const remarks = (r as any).registration_remarks || [];
-  //     remarks.forEach((rm: any) => {
-  //       remarkData.push({
-  //         "No. Container": r.container_number,
-  //         "Catatan": rm.remark,
-  //         "Tanggal": formatDateRaw(rm.created_at),
-  //         "Jam": formatTime(rm.created_at),
-  //         "Oleh": rm.created_by?.name || rm.created_by || "-",
-  //       });
-  //     });
-  //   });
-
-  //   const wb = XLSX.utils.book_new();
-
-  //   const wsReg = XLSX.utils.json_to_sheet(regData, { cellDates: true });
-  //   XLSX.utils.book_append_sheet(wb, wsReg, "Registrasi");
-
-  //   if (loloData.length > 0) {
-  //     const wsLolo = XLSX.utils.json_to_sheet(loloData, { cellDates: true });
-  //     XLSX.utils.book_append_sheet(wb, wsLolo, "Riwayat LOLO");
-  //   }
-
-  //   if (storageData.length > 0) {
-  //     const wsStorage = XLSX.utils.json_to_sheet(storageData, { cellDates: true });
-  //     XLSX.utils.book_append_sheet(wb, wsStorage, "Riwayat Storage");
-  //   }
-
-  //   if (remarkData.length > 0) {
-  //     const wsRemark = XLSX.utils.json_to_sheet(remarkData, { cellDates: true });
-  //     XLSX.utils.book_append_sheet(wb, wsRemark, "Catatan");
-  //   }
-
-  //   XLSX.writeFile(wb, `Export_Registrasi_${getLocalDate(new Date())}.xlsx`);
-  // };
-
   const handleExportExcel = () => {
     if (filtered.length === 0) {
       toast.error("Tidak ada data untuk diexport");
@@ -242,7 +149,22 @@ export default function RegistrationsPage() {
 
     // Helper: parse string → Date (untuk Excel date cell)
     // Gunakan toExcelDate dari utils
-    const d = (str: string | null | undefined): Date | null => toExcelDate(str);
+    const d = (str: string | null | undefined): number | null => {
+      if (!str) return null;
+      try {
+        const s = str.substring(0, 10);
+        const [y, m, day] = s.split('-').map(Number);
+        const dt = new Date(y, m - 1, day);
+        // Hitung serial number Excel secara manual (integer)
+        // Offset antara JS Date (1970) dan Excel (1900) adalah 25569 hari
+        // Namun cara paling aman adalah menghitung selisih dari base date Excel
+        const excelBase = new Date(1899, 11, 30);
+        const diff = dt.getTime() - excelBase.getTime();
+        return Math.floor(diff / (24 * 60 * 60 * 1000));
+      } catch (e) {
+        return null;
+      }
+    };
 
     // ── Sheet 1: Registrasi ──────────────────────────────────────────────────
     const regData = filtered.map(r => {
@@ -343,21 +265,19 @@ export default function RegistrationsPage() {
       });
     });
 
-    // ── Build Workbook ───────────────────────────────────────────────────────
     const wb = XLSX.utils.book_new();
-
-    // Format date cell: "DD/MM/YYYY"
-    const DATE_FMT = "DD/MM/YYYY";
+    const DATE_FMT = "dd/mm/yyyy";
 
     const applyDateFormat = (ws: XLSX.WorkSheet, dateColLetters: string[]) => {
-      const range = XLSX.utils.decode_range(ws["!ref"] ?? "A1");
+      if (!ws["!ref"]) return;
+      const range = XLSX.utils.decode_range(ws["!ref"]);
       dateColLetters.forEach(colLetter => {
         const colIdx = XLSX.utils.decode_col(colLetter);
         for (let row = range.s.r + 1; row <= range.e.r; row++) {
           const cellAddr = XLSX.utils.encode_cell({ r: row, c: colIdx });
           const cell = ws[cellAddr];
-          if (cell && cell.v instanceof Date) {
-            cell.t = "d";
+          // Pastikan cell adalah angka (serial number) lalu beri format tanggal
+          if (cell && cell.t === 'n') {
             cell.z = DATE_FMT;
           }
         }
@@ -365,27 +285,27 @@ export default function RegistrationsPage() {
     };
 
     // Sheet Registrasi — kolom J = Tgl Masuk, L = Tgl Keluar
-    const wsReg = XLSX.utils.json_to_sheet(regData, { cellDates: true });
+    const wsReg = XLSX.utils.json_to_sheet(regData);
     applyDateFormat(wsReg, ["J", "L"]);
     XLSX.utils.book_append_sheet(wb, wsReg, "Registrasi");
 
-    // Sheet LOLO — kolom C = Tanggal
+    // Sheet LOLO — kolom G = Tanggal
     if (loloData.length > 0) {
-      const wsLolo = XLSX.utils.json_to_sheet(loloData, { cellDates: true });
-      applyDateFormat(wsLolo, ["C"]);
+      const wsLolo = XLSX.utils.json_to_sheet(loloData);
+      applyDateFormat(wsLolo, ["G"]);
       XLSX.utils.book_append_sheet(wb, wsLolo, "Riwayat LOLO");
     }
 
     // Sheet Storage — kolom B = Mulai, C = Selesai
     if (storageData.length > 0) {
-      const wsStorage = XLSX.utils.json_to_sheet(storageData, { cellDates: true });
+      const wsStorage = XLSX.utils.json_to_sheet(storageData);
       applyDateFormat(wsStorage, ["B", "C"]);
       XLSX.utils.book_append_sheet(wb, wsStorage, "Riwayat Storage");
     }
 
     // Sheet Catatan — kolom C = Tanggal
     if (remarkData.length > 0) {
-      const wsRemark = XLSX.utils.json_to_sheet(remarkData, { cellDates: true });
+      const wsRemark = XLSX.utils.json_to_sheet(remarkData);
       applyDateFormat(wsRemark, ["C"]);
       XLSX.utils.book_append_sheet(wb, wsRemark, "Catatan");
     }
