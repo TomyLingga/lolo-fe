@@ -31,7 +31,9 @@ export default function LoloFormModal({ open, onClose, onSaved, registration }: 
   const [occupiedSlots, setOccupiedSlots] = useState<{ registration_id: number; pos_length: number; pos_width: number; pos_height: number }[]>([]);
   const [slotsLoading, setSlotsLoading] = useState(false);
   
-  const loloRecs = (registration as any)?.lolo_records || [];
+  const loloRecs = [...((registration as any)?.lolo_records || [])].sort((a, b) => 
+    new Date(a.lolo_at).getTime() - new Date(b.lolo_at).getTime()
+  );
   const actualLastLolo = loloRecs.length > 0 ? loloRecs[loloRecs.length - 1].operation_type : null;
   const opType = actualLastLolo === "LIFT_OFF" ? "LIFT_ON" : "LIFT_OFF";
   const isLiftOff = opType === "LIFT_OFF";
