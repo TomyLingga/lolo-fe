@@ -416,9 +416,9 @@ export default function InvoicesPage() {
                                 <div className="flex items-center gap-2">
                                   <span className="font-mono text-sm font-bold text-white">
                                     {r.container_number}
-                                    {((r as any).storage_records && (r as any).storage_records.length > 0) && (
+                                    {(r.storage_records && r.storage_records.length > 0) && (
                                       <span className="text-slate-400 font-normal ml-1.5">
-                                        - ({(r as any).storage_records[(r as any).storage_records.length - 1].yard?.code})
+                                        - ({r.storage_records[r.storage_records.length - 1].yard?.code})
                                       </span>
                                     )}
                                   </span>
