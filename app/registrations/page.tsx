@@ -142,8 +142,11 @@ export default function RegistrationsPage() {
   };
 
   const handleExportExcel = () => {
-    if (filtered.length === 0) {
-      toast.error("Tidak ada data untuk diexport");
+    // Hanya export data yang aktif
+    const activeData = filtered.filter(r => r.is_active !== false);
+
+    if (activeData.length === 0) {
+      toast.error("Tidak ada data aktif untuk diexport");
       return;
     }
 
@@ -167,7 +170,7 @@ export default function RegistrationsPage() {
     };
 
     // ── Sheet 1: Registrasi ──────────────────────────────────────────────────
-    const regData = filtered.map(r => {
+    const regData = activeData.map(r => {
       const loloRecs = (r as any).lolo_records || [];
       const firstLiftOff = loloRecs.find((l: any) => l.operation_type === "LIFT_OFF");
       const lastLiftOn = [...loloRecs].reverse().find((l: any) => l.operation_type === "LIFT_ON");
@@ -191,7 +194,7 @@ export default function RegistrationsPage() {
 
     // ── Sheet 2: Riwayat LOLO ────────────────────────────────────────────────
     const loloData: object[] = [];
-    filtered.forEach(r => {
+    activeData.forEach(r => {
       const sortedLolos = [...((r as any).lolo_records || [])].sort((a, b) =>
         new Date(a.lolo_at).getTime() - new Date(b.lolo_at).getTime()
       );
@@ -234,7 +237,7 @@ export default function RegistrationsPage() {
 
     // ── Sheet 3: Riwayat Storage ─────────────────────────────────────────────
     const storageData: object[] = [];
-    filtered.forEach(r => {
+    activeData.forEach(r => {
       ((r as any).storage_records || []).forEach((s: any) => {
         storageData.push({
           "No. Container": r.container_number,
@@ -253,7 +256,7 @@ export default function RegistrationsPage() {
 
     // ── Sheet 4: Catatan ─────────────────────────────────────────────────────
     const remarkData: object[] = [];
-    filtered.forEach(r => {
+    activeData.forEach(r => {
       ((r as any).registration_remarks || []).forEach((rm: any) => {
         remarkData.push({
           "No. Container": r.container_number,
