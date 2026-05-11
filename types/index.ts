@@ -195,6 +195,7 @@ export interface StorageRecord {
   pos_height: number;
   moved_at: string;
   start_date: string;
+  end_date?: string;
   note?: string;
   cargo_status?: CargoStatus;
   yard?: Yard;

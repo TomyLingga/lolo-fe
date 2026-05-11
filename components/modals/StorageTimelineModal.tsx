@@ -17,7 +17,7 @@ interface Props {
 export default function StorageTimelineModal({ open, onClose, registration, onSaved }: Props) {
   const user = typeof window !== "undefined" ? getUser() : null;
   const isAdmin = user?.role === "admin";
-  const [editingStorage, setEditingStorage] = useState<{id: number, start_date: string, note: string} | null>(null);
+  const [editingStorage, setEditingStorage] = useState<{id: number, start_date: string, end_date: string | null, moved_at: string, note: string} | null>(null);
 
   // Langsung ambil dari data registrasi, tidak perlu fetch API lagi
   const records = registration?.storage_records || [];
@@ -32,7 +32,7 @@ export default function StorageTimelineModal({ open, onClose, registration, onSa
     icon: (
       <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
     ),
-    onEdit: isAdmin ? () => setEditingStorage({ id: r.id, start_date: r.start_date, note: r.note || "" }) : undefined,
+    onEdit: isAdmin ? () => setEditingStorage({ id: r.id, start_date: r.start_date, end_date: r.end_date || null, moved_at: r.moved_at, note: r.note || "" }) : undefined,
     details: [
       { label: "Status", value: r.cargo_status?.description || "-" },
       { label: "Mulai", value: formatDate(r.start_date) },
