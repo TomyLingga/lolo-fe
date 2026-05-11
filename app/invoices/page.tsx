@@ -4,11 +4,11 @@ import AppLayout from "@/components/layout/AppLayout";
 import PageHeader from "@/components/ui/PageHeader";
 import Modal from "@/components/ui/Modal";
 import ConfirmDialog from "@/components/ui/ConfirmDialog";
-import { invoicesApi, freightForwardersApi, taxesApi } from "@/lib/api";
+import { invoicesApi, freightForwardersApi, taxesApi, yardsApi } from "@/lib/api";
 import { getUser } from "@/lib/auth";
 import { formatDate, formatDateTime, formatCurrency, getErrorMessage, cn } from "@/lib/utils";
 import toast from "react-hot-toast";
-import type { Invoice, FreightForwarder, Registration, Tax } from "@/types";
+import type { Invoice, FreightForwarder, Registration, Tax, Yard } from "@/types";
 
 type FilterTab = "ALL" | "DRAFT" | "PAID";
 
@@ -59,6 +59,8 @@ export default function InvoicesPage() {
   const [filterRegTo, setFilterRegTo] = useState(getLocalDate(today));
   const [regStatusFilter, setRegStatusFilter] = useState<"ALL" | "CLOSED">("CLOSED");
   const [regSearch, setRegSearch] = useState("");
+  const [regYardFilter, setRegYardFilter] = useState("");
+  const [yards, setYards] = useState<Yard[]>([]);
   const [creating, setCreating] = useState(false);
 
   const [payConfirm, setPayConfirm] = useState(false);
@@ -100,11 +102,13 @@ export default function InvoicesPage() {
     setLoadingFfs(true);
     Promise.all([
       freightForwardersApi.getAll(),
-      taxesApi.getAll()
+      taxesApi.getAll(),
+      yardsApi.getAll()
     ])
-      .then(([ffsRes, taxesRes]) => {
+      .then(([ffsRes, taxesRes, yardsRes]) => {
         setFfs(ffsRes.data.data.filter((f: any) => f.is_active));
         setAvailableTaxes(taxesRes.data.data.filter((t: any) => t.is_active));
+        setYards(yardsRes.data.data.filter((y: any) => y.is_active));
       })
       .catch(() => { })
       .finally(() => setLoadingFfs(false));
@@ -162,7 +166,7 @@ export default function InvoicesPage() {
       toast.success("Invoice berhasil dibuat");
       setCreateOpen(false);
       setSelectedFf(""); setSelectedRegIds([]); setSelectedTaxIds([]); setFilterRegFrom(getLocalDate(startOfMonth)); setFilterRegTo(getLocalDate(today));
-      setRegStatusFilter("CLOSED"); setRegSearch("");
+      setRegStatusFilter("CLOSED"); setRegSearch(""); setRegYardFilter("");
       fetchData();
     } catch (err) { toast.error(getErrorMessage(err)); }
     finally { setCreating(false); }
@@ -380,6 +384,13 @@ export default function InvoicesPage() {
                           <input type="text" className="input py-1 text-xs bg-slate-900 border-slate-700" 
                             placeholder="Cari No. Kontainer..." value={regSearch} onChange={e => setRegSearch(e.target.value)} />
                         </div>
+                        <div className="flex-1 min-w-[120px]">
+                          <select className="input py-1 text-xs bg-slate-900 border-slate-700" 
+                            value={regYardFilter} onChange={e => setRegYardFilter(e.target.value)}>
+                            <option value="">Semua Yard</option>
+                            {yards.map(y => <option key={y.id} value={y.id}>{y.name}</option>)}
+                          </select>
+                        </div>
                       </div>
 
                       <div className="flex gap-2">
@@ -407,7 +418,14 @@ export default function InvoicesPage() {
                         // 2. Search Container Name
                         if (regSearch && !r.container_number.toLowerCase().includes(regSearch.toLowerCase())) return false;
 
-                        // 3. Date Range
+                        // 3. Filter Yard
+                        if (regYardFilter) {
+                          const storageRecs = (r as any).storage_records || [];
+                          const lastYardId = storageRecs.length > 0 ? storageRecs[storageRecs.length - 1].yard_id : null;
+                          if (String(lastYardId) !== regYardFilter) return false;
+                        }
+
+                        // 4. Date Range
                         if (!filterRegFrom && !filterRegTo) return true;
                         const loloRecs = (r as any).lolo_records || [];
 
