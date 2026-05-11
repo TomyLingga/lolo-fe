@@ -57,6 +57,8 @@ export default function InvoicesPage() {
   });
   const [filterRegFrom, setFilterRegFrom] = useState(getLocalDate(startOfMonth));
   const [filterRegTo, setFilterRegTo] = useState(getLocalDate(today));
+  const [regStatusFilter, setRegStatusFilter] = useState<"ALL" | "CLOSED">("CLOSED");
+  const [regSearch, setRegSearch] = useState("");
   const [creating, setCreating] = useState(false);
 
   const [payConfirm, setPayConfirm] = useState(false);
@@ -160,6 +162,7 @@ export default function InvoicesPage() {
       toast.success("Invoice berhasil dibuat");
       setCreateOpen(false);
       setSelectedFf(""); setSelectedRegIds([]); setSelectedTaxIds([]); setFilterRegFrom(getLocalDate(startOfMonth)); setFilterRegTo(getLocalDate(today));
+      setRegStatusFilter("CLOSED"); setRegSearch("");
       fetchData();
     } catch (err) { toast.error(getErrorMessage(err)); }
     finally { setCreating(false); }
@@ -362,24 +365,49 @@ export default function InvoicesPage() {
                   <p className="text-sm text-slate-500 py-3">Tidak ada registrasi yang dapat diinvoice</p>
                 ) : (
                   <>
-                    <div className="flex gap-2 mb-3 bg-slate-800 p-2 rounded-lg border border-slate-700">
-                      <div className="flex-1">
-                        <label className="text-[10px] text-slate-400 uppercase tracking-wider block mb-1">Tgl Masuk/Keluar Dari</label>
-                        <input type="date" className="input py-1 text-xs" value={filterRegFrom} onChange={e => setFilterRegFrom(e.target.value)} />
-                      </div>
-                      <div className="flex-1">
-                        <label className="text-[10px] text-slate-400 uppercase tracking-wider block mb-1">Tgl Masuk/Keluar Sampai</label>
-                        <input type="date" className="input py-1 text-xs" value={filterRegTo} onChange={e => setFilterRegTo(e.target.value)} />
-                      </div>
-                      {(filterRegFrom || filterRegTo) && (
-                        <div className="flex items-end pb-1">
-                          <button type="button" onClick={() => { setFilterRegFrom(""); setFilterRegTo(""); }} className="text-[10px] text-brand-400 hover:text-brand-300 px-2 py-1">Reset</button>
+                    <div className="flex flex-col gap-3 mb-3 bg-slate-800 p-3 rounded-lg border border-slate-700">
+                      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-700/50 pb-2">
+                        <div className="flex gap-1 bg-slate-900 p-1 rounded-md border border-slate-700">
+                          {(["ALL", "CLOSED"] as const).map(s => (
+                            <button key={s} type="button" onClick={() => setRegStatusFilter(s)}
+                              className={cn("px-2.5 py-1 rounded text-[10px] font-bold transition-all",
+                                regStatusFilter === s ? "bg-brand-600 text-white shadow-sm" : "text-slate-500 hover:text-slate-300")}>
+                              {s === "ALL" ? "SEMUA" : "HANYA CLOSED"}
+                            </button>
+                          ))}
                         </div>
-                      )}
+                        <div className="flex-1 min-w-[150px]">
+                          <input type="text" className="input py-1 text-xs bg-slate-900 border-slate-700" 
+                            placeholder="Cari No. Kontainer..." value={regSearch} onChange={e => setRegSearch(e.target.value)} />
+                        </div>
+                      </div>
+
+                      <div className="flex gap-2">
+                        <div className="flex-1">
+                          <label className="text-[10px] text-slate-400 uppercase tracking-wider block mb-1">Tgl Masuk/Keluar Dari</label>
+                          <input type="date" className="input py-1 text-xs" value={filterRegFrom} onChange={e => setFilterRegFrom(e.target.value)} />
+                        </div>
+                        <div className="flex-1">
+                          <label className="text-[10px] text-slate-400 uppercase tracking-wider block mb-1">Tgl Masuk/Keluar Sampai</label>
+                          <input type="date" className="input py-1 text-xs" value={filterRegTo} onChange={e => setFilterRegTo(e.target.value)} />
+                        </div>
+                        {(filterRegFrom || filterRegTo) && (
+                          <div className="flex items-end pb-1">
+                            <button type="button" onClick={() => { setFilterRegFrom(""); setFilterRegTo(""); }} className="text-[10px] text-brand-400 hover:text-brand-300 px-2 py-1">Reset</button>
+                          </div>
+                        )}
+                      </div>
                     </div>
 
                     <div className="space-y-2 max-h-48 overflow-y-auto border border-slate-700 rounded-lg p-3">
                       {invoiceableRegs.filter(r => {
+                        // 1. Filter Status
+                        if (regStatusFilter === "CLOSED" && r.record_status !== "CLOSED") return false;
+
+                        // 2. Search Container Name
+                        if (regSearch && !r.container_number.toLowerCase().includes(regSearch.toLowerCase())) return false;
+
+                        // 3. Date Range
                         if (!filterRegFrom && !filterRegTo) return true;
                         const loloRecs = (r as any).lolo_records || [];
 
