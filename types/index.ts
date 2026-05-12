@@ -140,6 +140,8 @@ export interface Registration {
   shipper_tenant?: FreightForwarder;
   container_size?: ContainerSize;
   container_type?: ContainerType;
+  size?: ContainerSize; // Alias to match backend relation
+  type?: ContainerType; // Alias to match backend relation
   cargo_status?: CargoStatus;
   package?: Package;
   last_lolo_type?: "LIFT_ON" | "LIFT_OFF";
@@ -232,11 +234,41 @@ export interface Invoice {
   bank_account_number?: string;
   signatory_name?: string;
   signatory_position?: string;
-  total_amount?: number;
+  subtotal: number;
+  grand_total: number;
+  total_amount?: number; // legacy
   paid_at?: string;
   created_at: string;
   freight_forwarder?: FreightForwarder;
-  registrations?: Registration[];
+  invoice_registrations?: InvoiceRegistration[];
+  taxes?: InvoiceTax[];
+}
+
+export interface InvoiceRegistration {
+  id: number;
+  invoice_id: number;
+  registration_id: number;
+  lolo_cost: number;
+  storage_cost: number;
+  subtotal: number;
+  billed_from: string;
+  registration?: Registration;
+}
+
+export interface InvoiceTax {
+  id: number;
+  name: string;
+  type: "ADD" | "DEDUCT";
+  value: number;
+  value_type: "PERCENTAGE" | "NOMINAL";
+  pivot?: {
+    invoice_id: number;
+    tax_id: number;
+    tax_value: number;
+    tax_value_type: "PERCENTAGE" | "NOMINAL";
+    tax_type: "ADD" | "DEDUCT";
+    calculated_amount: number;
+  };
 }
 
 // ─── Warehouse ─────────────────────────────────────────────────────────────

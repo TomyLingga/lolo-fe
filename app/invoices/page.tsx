@@ -6,8 +6,9 @@ import Modal from "@/components/ui/Modal";
 import ConfirmDialog from "@/components/ui/ConfirmDialog";
 import { invoicesApi, freightForwardersApi, taxesApi, yardsApi } from "@/lib/api";
 import { getUser } from "@/lib/auth";
-import { formatDate, formatDateTime, formatCurrency, getErrorMessage, cn } from "@/lib/utils";
+import { formatDate, formatDateTime, formatCurrency, getErrorMessage, cn, toExcelDate } from "@/lib/utils";
 import toast from "react-hot-toast";
+import * as XLSX from "xlsx";
 import type { Invoice, FreightForwarder, Registration, Tax, Yard } from "@/types";
 
 type FilterTab = "ALL" | "DRAFT" | "PAID";
@@ -172,6 +173,155 @@ export default function InvoicesPage() {
     finally { setCreating(false); }
   }
 
+  const handleExportExcel = (inv: Invoice) => {
+    try {
+      const wb = XLSX.utils.book_new();
+      
+      // Helper: Format tanggal dd/mm/yyyy
+      const fDate = (d: string | null | undefined) => {
+        if (!d) return "-";
+        const date = new Date(d);
+        const day = String(date.getDate()).padStart(2, '0');
+        const month = String(date.getMonth() + 1).padStart(2, '0');
+        const year = date.getFullYear();
+        return `${day}/${month}/${year}`;
+      };
+
+      // Helper: Get Suffix Cargo Status
+      const getSuffix = (statusName?: string) => {
+        if (!statusName) return "";
+        const s = statusName.toUpperCase();
+        if (s.includes("FULL")) return "(FL)";
+        if (s.includes("EMPTY") || s.includes("MT")) return "(MT)";
+        return `(${statusName})`;
+      };
+
+      // 1. Prepare Table Data Header
+      const data: any[][] = [
+        ["NO CONTAINER", "DATE", "DO", "PERIOD", "TYPE", "SIZE", "", "TOTAL"],
+        ["", "", "", "", "", "20 FT", "40 FT", ""]
+      ];
+
+      // 2. Process each registration
+      inv.invoice_registrations?.forEach(ir => {
+        const reg = ir.registration;
+        if (!reg) return;
+
+        const sizeCode = reg.size?.code || "";
+        const is20 = sizeCode.includes("20");
+        const is40 = sizeCode.includes("40");
+        const typeCode = reg.type?.code || "-";
+        const billedFrom = ir.billed_from;
+
+        // A. Filter & Add Storage Rows
+        const relevantStorages = (reg as any).storage_records?.filter((s: any) => {
+          // Hanya ambil yang masuk dalam periode invoice ini
+          // yaitu yang start_date atau end_date-nya bersinggungan dengan billedFrom ke depan
+          if (!billedFrom) return true;
+          const sEnd = s.end_date || inv.invoice_date;
+          return sEnd > billedFrom;
+        }) || [];
+
+        relevantStorages.forEach((s: any) => {
+          const startDate = s.start_date > (billedFrom || "") ? s.start_date : billedFrom;
+          const endDate = s.end_date || inv.invoice_date;
+          
+          // Hitung hari
+          const d1 = new Date(startDate!.substring(0, 10));
+          const d2 = new Date(endDate.substring(0, 10));
+          const diffDays = Math.floor((d2.getTime() - d1.getTime()) / (24 * 60 * 60 * 1000)) + 1;
+
+          const yardCode = s.yard?.code || "YARD";
+          const cargoSuffix = getSuffix(s.cargo_status?.description);
+
+          data.push([
+            reg.container_number,
+            `${fDate(startDate)} - ${fDate(endDate)}`,
+            `RENT ${yardCode} ${cargoSuffix}`,
+            `${diffDays} DAYS`,
+            typeCode,
+            is20 ? 1 : "",
+            is40 ? 1 : "",
+            Number(s.total_storage_cost) || 0 // Jika null, tampilkan 0 (backend biasanya mengirim ini)
+          ]);
+        });
+
+        // B. Filter & Add LOLO Rows
+        const relevantLolos = (reg as any).lolo_records?.filter((l: any) => {
+          if (!billedFrom) return true;
+          return l.lolo_at > billedFrom && l.lolo_at <= inv.invoice_date;
+        }) || [];
+
+        relevantLolos.forEach((l: any) => {
+          const opName = l.operation_type === "LIFT_OFF" ? "LIFT OFF" : "LIFT ON";
+          const cargoSuffix = getSuffix(l.cargo_status?.description);
+
+          data.push([
+            reg.container_number,
+            fDate(l.lolo_at),
+            `${opName} ${cargoSuffix}`,
+            "1",
+            typeCode,
+            is20 ? 1 : "",
+            is40 ? 1 : "",
+            Number(l.tariff_price) || 0
+          ]);
+        });
+      });
+
+      // Jika data kosong tapi ada total (misal manual adjustment, though not supported yet)
+      // Kita pastikan subtotal tetap akurat
+
+      // 3. Add Summary Rows
+      data.push([]); // Spacer
+      data.push(["", "", "", "", "", "", "SUBTOTAL", Number(inv.subtotal)]);
+      
+      inv.taxes?.forEach(t => {
+        // Gunakan calculated_amount dari pivot
+        const taxAmt = t.pivot?.calculated_amount || 0;
+        data.push(["", "", "", "", "", "", t.name, Number(taxAmt)]);
+      });
+
+      data.push(["", "", "", "", "", "", "GRAND TOTAL", Number(inv.grand_total)]);
+
+      const ws = XLSX.utils.aoa_to_sheet(data);
+
+      // 4. Styling & Merging
+      if(!ws['!merges']) ws['!merges'] = [];
+      ws['!merges'].push({ s: { r: 0, c: 5 }, e: { r: 0, c: 6 } }); // Merge SIZE header
+      
+      // Auto-size columns
+      ws["!cols"] = [
+        { wch: 20 }, { wch: 25 }, { wch: 20 }, { wch: 10 }, { wch: 15 }, { wch: 10 }, { wch: 10 }, { wch: 15 }
+      ];
+
+      XLSX.utils.book_append_sheet(wb, ws, "Invoice Detail");
+      XLSX.writeFile(wb, `Invoice_${inv.invoice_number.replace(/\//g, '_')}.xlsx`);
+    } catch (err) {
+      toast.error("Gagal mengekspor Excel: " + getErrorMessage(err));
+    }
+  }
+
+  const handleExportList = () => {
+    try {
+      if (filtered.length === 0) { toast.error("Tidak ada data untuk diekspor"); return; }
+      
+      const wb = XLSX.utils.book_new();
+      const exportData = filtered.map(i => ({
+        "No. Invoice": i.invoice_number,
+        "Freight Forwarder": i.freight_forwarder?.name || (i as any).freight_forwarders?.name || "-",
+        "Tanggal": i.invoice_date.substring(0, 10),
+        "Subtotal": Number(i.subtotal),
+        "Grand Total": Number(i.grand_total),
+        "Status": i.status
+      }));
+
+      const ws = XLSX.utils.json_to_sheet(exportData);
+      XLSX.utils.book_append_sheet(wb, ws, "Daftar Invoice");
+      XLSX.writeFile(wb, `Daftar_Invoice_${new Date().toISOString().substring(0, 10)}.xlsx`);
+    } catch (err) { toast.error("Gagal ekspor daftar: " + getErrorMessage(err)); }
+  }
+
   async function handlePay() {
     if (!selectedInv) return;
     setActionLoading(true);
@@ -203,13 +353,22 @@ export default function InvoicesPage() {
       <div className="p-4 sm:p-6">
         <PageHeader title="Invoice" subtitle="Manajemen invoice"
           actions={
-            <button className="btn-primary btn-sm sm:btn" onClick={() => setCreateOpen(true)}>
-              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-              </svg>
-              <span className="hidden sm:inline">Buat Invoice</span>
-              <span className="sm:hidden">Buat</span>
-            </button>
+            <div className="flex gap-2">
+              <button className="btn-secondary btn-sm sm:btn" onClick={handleExportList}>
+                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                </svg>
+                <span className="hidden sm:inline">Export List</span>
+                <span className="sm:hidden">Export</span>
+              </button>
+              <button className="btn-primary btn-sm sm:btn" onClick={() => setCreateOpen(true)}>
+                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                </svg>
+                <span className="hidden sm:inline">Buat Invoice</span>
+                <span className="sm:hidden">Buat</span>
+              </button>
+            </div>
           }
         />
 
@@ -276,7 +435,7 @@ export default function InvoicesPage() {
                   <tr><td colSpan={6} className="px-4 py-12 text-center text-slate-500">Tidak ada data</td></tr>
                 ) : filtered.map(inv => {
                   const ffName = inv.freight_forwarder?.name || (inv as any).freight_forwarders?.name || "-";
-                  const total = (inv as any).grand_total || inv.total_amount;
+                  const total = inv.grand_total || inv.total_amount;
 
                   return (
                     // MENGUBAH SYARAT OPACITY: Hanya tembus pandang jika API secara eksplisit mereturn is_active: false
@@ -291,11 +450,17 @@ export default function InvoicesPage() {
                       <td className="px-4 py-3">
                         <div className="flex items-center gap-1">
                           <a href={`${apiUrl}/invoices/${inv.id}/pdf`} target="_blank" rel="noopener noreferrer"
-                            className="btn btn-sm btn-ghost" title="Cetak PDF">
-                            <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
+                            className="btn btn-sm btn-ghost text-red-400 hover:text-red-300" title="Cetak PDF">
+                            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
                             </svg>
                           </a>
+                          <button onClick={() => handleExportExcel(inv)}
+                            className="btn btn-sm btn-ghost text-emerald-400 hover:text-emerald-300" title="Export Excel">
+                            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                            </svg>
+                          </button>
 
                           {inv.status === "DRAFT" && inv.is_active !== false && (
                             <button onClick={() => { setSelectedInv(inv); setPayConfirm(true); }} className="btn btn-sm btn-success" title="Tandai Lunas">
@@ -393,64 +558,99 @@ export default function InvoicesPage() {
                         </div>
                       </div>
 
-                      <div className="flex gap-2">
-                        <div className="flex-1">
-                          <label className="text-[10px] text-slate-400 uppercase tracking-wider block mb-1">Tgl Masuk/Keluar Dari</label>
-                          <input type="date" className="input py-1 text-xs" value={filterRegFrom} onChange={e => setFilterRegFrom(e.target.value)} />
-                        </div>
-                        <div className="flex-1">
-                          <label className="text-[10px] text-slate-400 uppercase tracking-wider block mb-1">Tgl Masuk/Keluar Sampai</label>
-                          <input type="date" className="input py-1 text-xs" value={filterRegTo} onChange={e => setFilterRegTo(e.target.value)} />
-                        </div>
-                        {(filterRegFrom || filterRegTo) && (
-                          <div className="flex items-end pb-1">
-                            <button type="button" onClick={() => { setFilterRegFrom(""); setFilterRegTo(""); }} className="text-[10px] text-brand-400 hover:text-brand-300 px-2 py-1">Reset</button>
+                      <div className="flex flex-wrap items-end justify-between gap-3">
+                        <div className="flex gap-2 flex-1 min-w-[300px]">
+                          <div className="flex-1">
+                            <label className="text-[10px] text-slate-400 uppercase tracking-wider block mb-1">Tgl Masuk/Keluar Dari</label>
+                            <input type="date" className="input py-1 text-xs" value={filterRegFrom} onChange={e => setFilterRegFrom(e.target.value)} />
                           </div>
-                        )}
+                          <div className="flex-1">
+                            <label className="text-[10px] text-slate-400 uppercase tracking-wider block mb-1">Tgl Masuk/Keluar Sampai</label>
+                            <input type="date" className="input py-1 text-xs" value={filterRegTo} onChange={e => setFilterRegTo(e.target.value)} />
+                          </div>
+                          {(filterRegFrom || filterRegTo) && (
+                            <div className="flex items-end pb-1">
+                              <button type="button" onClick={() => { setFilterRegFrom(""); setFilterRegTo(""); }} className="text-[10px] text-brand-400 hover:text-brand-300 px-2 py-1">Reset</button>
+                            </div>
+                          )}
+                        </div>
+
+                        {/* SELECT ALL & COUNT LABEL */}
+                        {invoiceableRegs.length > 0 && (() => {
+                          const filteredRegs = invoiceableRegs.filter(r => {
+                            if (regStatusFilter === "CLOSED" && r.record_status !== "CLOSED") return false;
+                            if (regSearch && !r.container_number.toLowerCase().includes(regSearch.toLowerCase())) return false;
+                            const storageRecs = [...((r as any).storage_records || [])].sort((a, b) => new Date(a.start_date).getTime() - new Date(b.start_date).getTime());
+                            if (regYardFilter && String(storageRecs.length > 0 ? storageRecs[storageRecs.length - 1].yard_id : null) !== regYardFilter) return false;
+                            if (!filterRegFrom && !filterRegTo) return true;
+                            const loloRecs = [...((r as any).lolo_records || [])].sort((a, b) => new Date(a.lolo_at).getTime() - new Date(b.lolo_at).getTime());
+                            if (r.record_status === 'OPEN') {
+                              const firstLoloOff = loloRecs.find((l: any) => l.operation_type === "LIFT_OFF");
+                              if (!firstLoloOff) return true;
+                              const inDateStr = firstLoloOff.lolo_at.substring(0, 10);
+                              return (!filterRegFrom || inDateStr >= filterRegFrom) && (!filterRegTo || inDateStr <= filterRegTo);
+                            } else {
+                              const lastLoloOn = [...loloRecs].reverse().find((l: any) => l.operation_type === "LIFT_ON");
+                              if (!lastLoloOn) return true;
+                              const outDateStr = lastLoloOn.lolo_at.substring(0, 10);
+                              return (!filterRegFrom || outDateStr >= filterRegFrom) && (!filterRegTo || outDateStr <= filterRegTo);
+                            }
+                          });
+
+                          const allFilteredSelected = filteredRegs.length > 0 && filteredRegs.every(r => selectedRegIds.includes(r.id));
+                          const countSelectedFiltered = filteredRegs.filter(r => selectedRegIds.includes(r.id)).length;
+
+                          return (
+                            <div className="flex items-center gap-4 bg-slate-900/50 px-3 py-2 rounded-md border border-slate-700/50 ml-auto sm:ml-0">
+                              <label className="flex items-center gap-2 cursor-pointer group">
+                                <input type="checkbox" className="rounded border-slate-600 text-brand-600 focus:ring-brand-500"
+                                  checked={allFilteredSelected}
+                                  onChange={(e) => {
+                                    if (e.target.checked) {
+                                      const idsToAdd = filteredRegs.map(r => r.id).filter(id => !selectedRegIds.includes(id));
+                                      setSelectedRegIds(prev => [...prev, ...idsToAdd]);
+                                    } else {
+                                      const idsToRemove = filteredRegs.map(r => r.id);
+                                      setSelectedRegIds(prev => prev.filter(id => !idsToRemove.includes(id)));
+                                    }
+                                  }}
+                                />
+                                <span className="text-[10px] font-bold text-slate-400 group-hover:text-slate-200 uppercase tracking-wider">Pilih Semua</span>
+                              </label>
+                              <div className="h-4 w-px bg-slate-700"></div>
+                              <span className="text-[10px] font-bold text-brand-400 uppercase tracking-wider">
+                                {countSelectedFiltered} / {filteredRegs.length} Invoiceable
+                              </span>
+                            </div>
+                          );
+                        })()}
                       </div>
                     </div>
 
                     <div className="space-y-2 max-h-48 overflow-y-auto border border-slate-700 rounded-lg p-3">
                       {invoiceableRegs.filter(r => {
-                        // 1. Filter Status
                         if (regStatusFilter === "CLOSED" && r.record_status !== "CLOSED") return false;
-
-                        // 2. Search Container Name
                         if (regSearch && !r.container_number.toLowerCase().includes(regSearch.toLowerCase())) return false;
-
-                        // 3. Filter Yard
-                        if (regYardFilter) {
-                          const storageRecs = (r as any).storage_records || [];
-                          const lastYardId = storageRecs.length > 0 ? storageRecs[storageRecs.length - 1].yard_id : null;
-                          if (String(lastYardId) !== regYardFilter) return false;
-                        }
-
-                        // 4. Date Range
+                        const storageRecs = [...((r as any).storage_records || [])].sort((a, b) => new Date(a.start_date).getTime() - new Date(b.start_date).getTime());
+                        if (regYardFilter && String(storageRecs.length > 0 ? storageRecs[storageRecs.length - 1].yard_id : null) !== regYardFilter) return false;
                         if (!filterRegFrom && !filterRegTo) return true;
-                        const loloRecs = (r as any).lolo_records || [];
-
+                        const loloRecs = [...((r as any).lolo_records || [])].sort((a, b) => new Date(a.lolo_at).getTime() - new Date(b.lolo_at).getTime());
                         if (r.record_status === 'OPEN') {
-                          // Registrasi OPEN: filter berdasarkan tanggal MASUK (LIFT_OFF)
                           const firstLoloOff = loloRecs.find((l: any) => l.operation_type === "LIFT_OFF");
-                          if (!firstLoloOff) return true; // belum ada LOLO sama sekali, tetap tampilkan
-                          const d = new Date(firstLoloOff.lolo_at);
-                          const inDateStr = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
-                          if (filterRegFrom && inDateStr < filterRegFrom) return false;
-                          if (filterRegTo && inDateStr > filterRegTo) return false;
-                          return true;
+                          if (!firstLoloOff) return true;
+                          const inDateStr = firstLoloOff.lolo_at.substring(0, 10);
+                          return (!filterRegFrom || inDateStr >= filterRegFrom) && (!filterRegTo || inDateStr <= filterRegTo);
                         } else {
-                          // Registrasi CLOSED: filter berdasarkan tanggal KELUAR (LIFT_ON)
                           const lastLoloOn = [...loloRecs].reverse().find((l: any) => l.operation_type === "LIFT_ON");
-                          if (!lastLoloOn) return true; // tidak ada LIFT_ON, tetap tampilkan
-                          const d = new Date(lastLoloOn.lolo_at);
-                          const outDateStr = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
-                          if (filterRegFrom && outDateStr < filterRegFrom) return false;
-                          if (filterRegTo && outDateStr > filterRegTo) return false;
-                          return true;
+                          if (!lastLoloOn) return true;
+                          const outDateStr = lastLoloOn.lolo_at.substring(0, 10);
+                          return (!filterRegFrom || outDateStr >= filterRegFrom) && (!filterRegTo || outDateStr <= filterRegTo);
                         }
                       }).map(r => {
-                        const loloRecs = (r as any).lolo_records || [];
+                        const loloRecs = [...((r as any).lolo_records || [])].sort((a, b) => new Date(a.lolo_at).getTime() - new Date(b.lolo_at).getTime());
                         const lastLoloOn = [...loloRecs].reverse().find((l: any) => l.operation_type === "LIFT_ON");
+                        const storageRecs = [...((r as any).storage_records || [])].sort((a, b) => new Date(a.start_date).getTime() - new Date(b.start_date).getTime());
+                        const lastStorage = storageRecs.length > 0 ? storageRecs[storageRecs.length - 1] : null;
 
                         return (
                           <label key={r.id} className="flex items-start gap-3 cursor-pointer hover:bg-slate-800 p-2 rounded transition-colors border border-transparent hover:border-slate-700">
@@ -462,9 +662,9 @@ export default function InvoicesPage() {
                                 <div className="flex items-center gap-2">
                                   <span className="font-mono text-sm font-bold text-white">
                                     {r.container_number}
-                                    {(r.storage_records && r.storage_records.length > 0) && (
+                                    {lastStorage && (
                                       <span className="text-slate-400 font-normal ml-1.5">
-                                        - ({r.storage_records[r.storage_records.length - 1].yard?.code})
+                                        - ({lastStorage.yard?.code})
                                       </span>
                                     )}
                                   </span>
