@@ -28,6 +28,7 @@ export default function DashboardPage() {
     lolo_off_count: 0,
     lolo_on_count: 0,
     projected_revenue: 0,
+    invoiced_revenue: 0,
     open_count_filtered: 0,
     container_filtered: 0,
     capacity_filtered: 0
@@ -153,7 +154,7 @@ export default function DashboardPage() {
       accent: "rose",
       sub: `pada ${periodLabel} di ${selectedYardName}`,
     },
-    ...(user?.role === "admin" ? [{
+    {
       label: `Proyeksi Pendapatan ${periodLabel}`,
       value: loading ? "—" : new Intl.NumberFormat("id-ID", { style: "currency", currency: "IDR", maximumFractionDigits: 0 }).format(stats.projected_revenue),
       icon: (
@@ -161,20 +162,21 @@ export default function DashboardPage() {
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
         </svg>
       ),
-      accent: "emerald",
-      sub: `Realisasi LOLO & Storage (Inc. FT) di ${selectedYardName}`,
+      accent: "indigo",
+      sub: `Belum Di-invoice (di ${selectedYardName})`,
       isRevenue: true,
-    }] : []),
+      hideForNonAdmin: true,
+    },
     {
-      label: "Container di Dalam Yard",
-      value: loading ? "—" : String(stats.container_filtered),
+      label: "Inventori Kontainer",
+      value: loading ? "—" : `${stats.container_filtered} / ${Math.max(0, stats.open_count_filtered - stats.container_filtered)}`,
       icon: (
         <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M4 7v10c0 2.21 3.582 4 8 4s8-1.79 8-4V7M4 7c0 2.21 3.582 4 8 4s8-1.79 8-4M4 7c0-2.21 3.582-4 8-4s8 1.79 8 4m0 5c0 2.21-3.582 4-8 4s-8-1.79-8-4" />
         </svg>
       ),
       accent: "emerald",
-      sub: `di ${selectedYardName}`,
+      sub: `Dalam / Luar (${selectedYardName})`,
     },
     {
       label: "Total Lift On (Bulan Ini)",
@@ -188,17 +190,6 @@ export default function DashboardPage() {
       sub: `Total transaksi lifting keluar`,
     },
     {
-      label: "Container di Luar Yard",
-      value: loading ? "—" : String(Math.max(0, stats.open_count_filtered - stats.container_filtered)),
-      icon: (
-        <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-        </svg>
-      ),
-      accent: "amber",
-      sub: `di luar ${selectedYardName}`,
-    },
-    {
       label: "Okupansi Yard",
       value: loading ? "—" : `${stats.capacity_filtered > 0 ? Math.round((stats.container_filtered / stats.capacity_filtered) * 100) : 0}%`,
       icon: (
@@ -207,8 +198,8 @@ export default function DashboardPage() {
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M20.488 9H15V3.512A9.025 9.025 0 0120.488 9z" />
         </svg>
       ),
-      accent: "indigo",
-      sub: `${stats.container_filtered} dari ${stats.capacity_filtered || 0} slot terisi di ${selectedYardName}`,
+      accent: "emerald",
+      sub: `${stats.container_filtered} dari ${stats.capacity_filtered || 0} slot terisi`,
     },
     {
       label: "Waktu Sistem",
@@ -222,8 +213,20 @@ export default function DashboardPage() {
       accent: "amber",
       sub: "waktu lokal saat ini",
     },
+    {
+      label: `Pendapatan Ter-invoice`,
+      value: loading ? "—" : new Intl.NumberFormat("id-ID", { style: "currency", currency: "IDR", maximumFractionDigits: 0 }).format(stats.invoiced_revenue),
+      icon: (
+        <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+        </svg>
+      ),
+      accent: "emerald",
+      sub: `Sudah ditagihkan (Inc. Pajak)`,
+      isRevenue: true,
+      hideForNonAdmin: true,
+    },
   ];
-
 
   const accentMap: Record<string, string> = {
     indigo: "bg-indigo-500/10 text-indigo-400 ring-indigo-500/20",
@@ -263,62 +266,66 @@ export default function DashboardPage() {
 
         {/* Stats */}
         <div className={cn("grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4")}>
-          {statCards.map((card) => (
-            <div key={card.label} className="card p-3 flex items-start gap-3 group hover:border-brand-500/50 transition-colors">
-              <div className={`w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 ring-2 transition-transform group-hover:scale-110 ${accentMap[card.accent]}`}>
-                {/* Clone icon with smaller size */}
-                {React.cloneElement(card.icon as React.ReactElement, { className: "w-4 h-4" })}
-              </div>
-              <div className="min-w-0 flex-1">
-                <p className="text-[8px] font-bold text-slate-500 uppercase tracking-[0.2em]">{card.label}</p>
-                {card.label === "Waktu Sistem" ? (
-                  <div className="mt-0.5">
-                    <p className="text-xl font-black text-white tracking-tighter drop-shadow-[0_0_8px_rgba(255,255,255,0.3)] leading-tight">
-                      {time.toLocaleTimeString("id-ID", { hour: "2-digit", minute: "2-digit", second: "2-digit" })}
-                    </p>
-                    <p className="text-[8px] font-medium text-amber-500/80 uppercase tracking-widest">
-                      {time.toLocaleDateString("id-ID", { weekday: 'short', day: '2-digit', month: 'short', year: 'numeric' })}
-                    </p>
-                  </div>
-                ) : (card as any).isRevenue ? (
-                  <>
-                    <div className="flex items-center gap-1.5 mt-0.5">
-                      <p className={cn(
-                        "font-bold leading-none tracking-tight text-xl sm:text-2xl transition-all duration-300",
-                        showRevenue ? "text-white" : "text-white"
-                      )}>
-                        {showRevenue ? card.value : "Rp ••••••••"}
+          {statCards.map((card) => {
+            if (card.hideForNonAdmin && user?.role !== "admin") return null;
+
+            return (
+              <div key={card.label} className="card p-3 flex items-start gap-3 group hover:border-brand-500/50 transition-colors">
+                <div className={`w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 ring-2 transition-transform group-hover:scale-110 ${accentMap[card.accent]}`}>
+                  {/* Clone icon with smaller size */}
+                  {React.cloneElement(card.icon as React.ReactElement, { className: "w-4 h-4" })}
+                </div>
+                <div className="min-w-0 flex-1">
+                  <p className="text-[8px] font-bold text-slate-500 uppercase tracking-[0.2em]">{card.label}</p>
+                  {card.label === "Waktu Sistem" ? (
+                    <div className="mt-0.5">
+                      <p className="text-xl font-black text-white tracking-tighter drop-shadow-[0_0_8px_rgba(255,255,255,0.3)] leading-tight">
+                        {time.toLocaleTimeString("id-ID", { hour: "2-digit", minute: "2-digit", second: "2-digit" })}
                       </p>
-                      <button
-                        onClick={() => setShowRevenue(v => !v)}
-                        className="ml-1 text-slate-500 hover:text-slate-300 transition-colors flex-shrink-0"
-                        title={showRevenue ? "Sembunyikan" : "Tampilkan"}
-                      >
-                        {showRevenue ? (
-                          <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21" />
-                          </svg>
-                        ) : (
-                          <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
-                          </svg>
-                        )}
-                      </button>
+                      <p className="text-[8px] font-medium text-amber-500/80 uppercase tracking-widest">
+                        {time.toLocaleDateString("id-ID", { weekday: 'short', day: '2-digit', month: 'short', year: 'numeric' })}
+                      </p>
                     </div>
-                    <p className="text-[9px] text-slate-500 mt-1.5 truncate font-medium">{card.sub}</p>
-                  </>
-                ) : (
-                  <>
-                    <p className={cn(
-                      "font-bold text-white leading-none mt-0.5 tracking-tight text-xl sm:text-2xl"
-                    )}>{card.value}</p>
-                    <p className="text-[9px] text-slate-500 mt-1.5 truncate font-medium">{card.sub}</p>
-                  </>
-                )}
+                  ) : (card as any).isRevenue ? (
+                    <>
+                      <div className="flex items-center gap-1.5 mt-0.5">
+                        <p className={cn(
+                          "font-bold leading-none tracking-tight text-xl sm:text-2xl transition-all duration-300",
+                          showRevenue ? "text-white" : "text-white"
+                        )}>
+                          {showRevenue ? card.value : "Rp ••••••••"}
+                        </p>
+                        <button
+                          onClick={() => setShowRevenue(v => !v)}
+                          className="ml-1 text-slate-500 hover:text-slate-300 transition-colors flex-shrink-0"
+                          title={showRevenue ? "Sembunyikan" : "Tampilkan"}
+                        >
+                          {showRevenue ? (
+                            <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268-2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21" />
+                            </svg>
+                          ) : (
+                            <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268-2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                            </svg>
+                          )}
+                        </button>
+                      </div>
+                      <p className="text-[9px] text-slate-500 mt-1.5 truncate font-medium">{card.sub}</p>
+                    </>
+                  ) : (
+                    <>
+                      <p className={cn(
+                        "font-bold text-white leading-none mt-0.5 tracking-tight text-xl sm:text-2xl"
+                      )}>{card.value}</p>
+                      <p className="text-[9px] text-slate-500 mt-1.5 truncate font-medium">{card.sub}</p>
+                    </>
+                  )}
+                </div>
               </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
 
         {/* Yard Map card */}
