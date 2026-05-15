@@ -4,12 +4,12 @@ import AppLayout from "@/components/layout/AppLayout";
 import PageHeader from "@/components/ui/PageHeader";
 import Modal from "@/components/ui/Modal";
 import ConfirmDialog from "@/components/ui/ConfirmDialog";
-import { invoicesApi, freightForwardersApi, taxesApi, yardsApi } from "@/lib/api";
+import { invoicesApi, freightForwardersApi, taxesApi, yardsApi, packagesApi } from "@/lib/api";
 import { getUser } from "@/lib/auth";
 import { formatDate, formatDateTime, formatCurrency, getErrorMessage, cn, toExcelDate } from "@/lib/utils";
 import toast from "react-hot-toast";
 import * as XLSX from "xlsx";
-import type { Invoice, FreightForwarder, Registration, Tax, Yard } from "@/types";
+import type { Invoice, FreightForwarder, Registration, Tax, Yard, Package } from "@/types";
 
 type FilterTab = "ALL" | "DRAFT" | "PAID";
 
@@ -61,7 +61,10 @@ export default function InvoicesPage() {
   const [regStatusFilter, setRegStatusFilter] = useState<"ALL" | "CLOSED">("CLOSED");
   const [regSearch, setRegSearch] = useState("");
   const [regYardFilter, setRegYardFilter] = useState("");
+  const [regPackageFilter, setRegPackageFilter] = useState("");
   const [yards, setYards] = useState<Yard[]>([]);
+  const [packages, setPackages] = useState<Package[]>([]);
+  const [taxSearch, setTaxSearch] = useState("");
   const [creating, setCreating] = useState(false);
 
   const [payConfirm, setPayConfirm] = useState(false);
@@ -104,12 +107,14 @@ export default function InvoicesPage() {
     Promise.all([
       freightForwardersApi.getAll(),
       taxesApi.getAll(),
-      yardsApi.getAll()
+      yardsApi.getAll(),
+      packagesApi.getAll()
     ])
-      .then(([ffsRes, taxesRes, yardsRes]) => {
+      .then(([ffsRes, taxesRes, yardsRes, packagesRes]) => {
         setFfs(ffsRes.data.data.filter((f: any) => f.is_active));
         setAvailableTaxes(taxesRes.data.data.filter((t: any) => t.is_active));
         setYards(yardsRes.data.data.filter((y: any) => y.is_active));
+        setPackages(packagesRes.data.data.filter((p: any) => p.is_active));
       })
       .catch(() => { })
       .finally(() => setLoadingFfs(false));
@@ -167,7 +172,7 @@ export default function InvoicesPage() {
       toast.success("Invoice berhasil dibuat");
       setCreateOpen(false);
       setSelectedFf(""); setSelectedRegIds([]); setSelectedTaxIds([]); setFilterRegFrom(getLocalDate(startOfMonth)); setFilterRegTo(getLocalDate(today));
-      setRegStatusFilter("CLOSED"); setRegSearch(""); setRegYardFilter("");
+      setRegStatusFilter("CLOSED"); setRegSearch(""); setRegYardFilter(""); setRegPackageFilter(""); setTaxSearch("");
       fetchData();
     } catch (err) { toast.error(getErrorMessage(err)); }
     finally { setCreating(false); }
@@ -556,6 +561,13 @@ export default function InvoicesPage() {
                             {yards.map(y => <option key={y.id} value={y.id}>{y.name}</option>)}
                           </select>
                         </div>
+                        <div className="flex-1 min-w-[120px]">
+                          <select className="input py-1 text-xs bg-slate-900 border-slate-700" 
+                            value={regPackageFilter} onChange={e => setRegPackageFilter(e.target.value)}>
+                            <option value="">Semua Paket</option>
+                            {packages.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
+                          </select>
+                        </div>
                       </div>
 
                       <div className="flex flex-wrap items-end justify-between gap-3">
@@ -582,6 +594,7 @@ export default function InvoicesPage() {
                             if (regSearch && !r.container_number.toLowerCase().includes(regSearch.toLowerCase())) return false;
                             const storageRecs = [...((r as any).storage_records || [])].sort((a, b) => new Date(a.start_date).getTime() - new Date(b.start_date).getTime());
                             if (regYardFilter && String(storageRecs.length > 0 ? storageRecs[storageRecs.length - 1].yard_id : null) !== regYardFilter) return false;
+                            if (regPackageFilter && String(r.package_id) !== regPackageFilter) return false;
                             if (!filterRegFrom && !filterRegTo) return true;
                             const loloRecs = [...((r as any).lolo_records || [])].sort((a, b) => new Date(a.lolo_at).getTime() - new Date(b.lolo_at).getTime());
                             if (r.record_status === 'OPEN') {
@@ -633,6 +646,7 @@ export default function InvoicesPage() {
                         if (regSearch && !r.container_number.toLowerCase().includes(regSearch.toLowerCase())) return false;
                         const storageRecs = [...((r as any).storage_records || [])].sort((a, b) => new Date(a.start_date).getTime() - new Date(b.start_date).getTime());
                         if (regYardFilter && String(storageRecs.length > 0 ? storageRecs[storageRecs.length - 1].yard_id : null) !== regYardFilter) return false;
+                        if (regPackageFilter && String(r.package_id) !== regPackageFilter) return false;
                         if (!filterRegFrom && !filterRegTo) return true;
                         const loloRecs = [...((r as any).lolo_records || [])].sort((a, b) => new Date(a.lolo_at).getTime() - new Date(b.lolo_at).getTime());
                         if (r.record_status === 'OPEN') {
@@ -705,9 +719,18 @@ export default function InvoicesPage() {
 
             {selectedFf && availableTaxes.length > 0 && (
               <div>
-                <label className="label mb-2">Pilih Tax / Discount</label>
+                <div className="flex items-center justify-between mb-2">
+                  <label className="label mb-0">Pilih Tax / Discount</label>
+                  <div className="relative w-48 group">
+                    <input type="text" className="input py-1 pl-8 text-xs bg-slate-800/50 border-slate-700" 
+                      placeholder="Cari Tax..." value={taxSearch} onChange={e => setTaxSearch(e.target.value)} />
+                    <svg className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-500 group-focus-within:text-brand-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                    </svg>
+                  </div>
+                </div>
                 <div className="space-y-2 max-h-40 overflow-y-auto border border-slate-700 rounded-lg p-3">
-                  {availableTaxes.map(tax => (
+                  {availableTaxes.filter(t => t.name.toLowerCase().includes(taxSearch.toLowerCase())).map(tax => (
                     <label key={tax.id} className="flex items-center gap-3 cursor-pointer hover:bg-slate-800 p-2 rounded transition-colors">
                       <input type="checkbox" className="rounded border-slate-600 focus:ring-brand-500 text-brand-500"
                         checked={selectedTaxIds.includes(tax.id)}
