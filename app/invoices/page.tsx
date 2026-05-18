@@ -219,36 +219,71 @@ export default function InvoicesPage() {
         const billedFrom = ir.billed_from;
 
         // A. Filter & Add Storage Rows
-        const relevantStorages = (reg as any).storage_records?.filter((s: any) => {
-          // Hanya ambil yang masuk dalam periode invoice ini
-          // yaitu yang start_date atau end_date-nya bersinggungan dengan billedFrom ke depan
-          if (!billedFrom) return true;
-          const sEnd = s.end_date || inv.invoice_date;
-          return sEnd > billedFrom;
-        }) || [];
+        const allStorages = (reg as any).storage_records || [];
+        const sortedStorages = [...allStorages].sort((a: any, b: any) => new Date(a.start_date).getTime() - new Date(b.start_date).getTime());
 
-        relevantStorages.forEach((s: any) => {
-          const startDate = s.start_date > (billedFrom || "") ? s.start_date : billedFrom;
-          const endDate = s.end_date || inv.invoice_date;
+        sortedStorages.forEach((s: any) => {
+          const recordStart = new Date(s.start_date.substring(0, 10));
+          const invoiceDateStr = inv.invoice_date.substring(0, 10);
+          const recordEndStr = s.end_date ? s.end_date.substring(0, 10) : invoiceDateStr;
           
-          // Hitung hari
-          const d1 = new Date(startDate!.substring(0, 10));
-          const d2 = new Date(endDate.substring(0, 10));
-          const diffDays = Math.floor((d2.getTime() - d1.getTime()) / (24 * 60 * 60 * 1000)) + 1;
+          let billEnd = new Date(recordEndStr);
+          const invDate = new Date(invoiceDateStr);
+          if (billEnd > invDate) billEnd = invDate;
 
-          const yardCode = s.yard?.code || "YARD";
-          const cargoSuffix = getSuffix(s.cargo_status?.description);
+          const billStart = billedFrom ? new Date(billedFrom.substring(0, 10)) : new Date(recordStart);
 
-          data.push([
-            reg.container_number,
-            `${fDate(startDate)} - ${fDate(endDate)}`,
-            `RENT ${yardCode} ${cargoSuffix}`,
-            `${diffDays} DAYS`,
-            typeCode,
-            is20 ? 1 : "",
-            is40 ? 1 : "",
-            Number(s.total_storage_cost) || 0 // Jika null, tampilkan 0 (backend biasanya mengirim ini)
-          ]);
+          // Skip if the period doesn't overlap
+          if (billStart >= billEnd && billStart.getTime() !== recordStart.getTime()) {
+            return;
+          }
+
+          const displayStart = billStart > recordStart ? new Date(billStart.getTime() + 86400000) : recordStart;
+          const displayEnd = billEnd;
+          
+          const freeTimeDays = reg.package?.free_time_days || 0;
+          let previousDays = 0;
+          for (const prev of sortedStorages) {
+            if (prev.id === s.id) break;
+            if (prev.end_date) {
+               const pStart = new Date(prev.start_date.substring(0, 10));
+               const pEnd = new Date(prev.end_date.substring(0, 10));
+               previousDays += Math.floor((pEnd.getTime() - pStart.getTime()) / 86400000) + 1;
+            }
+          }
+          const freeTimeAvailable = Math.max(0, freeTimeDays - previousDays);
+
+          const calcCost = (endDate: Date) => {
+             const d = Math.floor((endDate.getTime() - recordStart.getTime()) / 86400000) + 1;
+             const used = Math.min(d, freeTimeAvailable);
+             const taxable = Math.max(0, d - used);
+             return taxable * (Number(s.storage_price_per_day) || 0);
+          };
+
+          const costAtEnd = calcCost(billEnd);
+          let costAtStart = 0;
+          if (billStart > recordStart) {
+             costAtStart = calcCost(billStart);
+          }
+          
+          const periodCost = Math.max(0, costAtEnd - costAtStart);
+
+          if (periodCost > 0 || billStart.getTime() === recordStart.getTime()) {
+            const diffDays = Math.floor((displayEnd.getTime() - displayStart.getTime()) / 86400000) + 1;
+            const yardCode = s.yard?.code || "YARD";
+            const cargoSuffix = getSuffix(s.cargo_status?.description);
+
+            data.push([
+              reg.container_number,
+              `${fDate(displayStart.toISOString())} - ${fDate(displayEnd.toISOString())}`,
+              `RENT ${yardCode} ${cargoSuffix}`,
+              `${diffDays} DAYS`,
+              typeCode,
+              is20 ? 1 : "",
+              is40 ? 1 : "",
+              periodCost
+            ]);
+          }
         });
 
         // B. Filter & Add LOLO Rows
@@ -256,6 +291,9 @@ export default function InvoicesPage() {
           if (!billedFrom) return true;
           return l.lolo_at > billedFrom && l.lolo_at <= inv.invoice_date;
         }) || [];
+
+        // Urutkan LOLO berdasarkan tanggal agar sesuai (chronological order)
+        relevantLolos.sort((a: any, b: any) => new Date(a.lolo_at).getTime() - new Date(b.lolo_at).getTime());
 
         relevantLolos.forEach((l: any) => {
           const opName = l.operation_type === "LIFT_OFF" ? "LIFT OFF" : "LIFT ON";
