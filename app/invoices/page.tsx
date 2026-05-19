@@ -229,6 +229,12 @@ export default function InvoicesPage() {
           
           let billEnd = new Date(recordEndStr);
           const invDate = new Date(invoiceDateStr);
+
+          // Skip storage record yang belum mulai sampai tanggal invoice
+          if (recordStart > invDate) {
+            return;
+          }
+
           if (billEnd > invDate) billEnd = invDate;
 
           const billStart = billedFrom ? new Date(billedFrom.substring(0, 10)) : new Date(recordStart);
@@ -288,8 +294,10 @@ export default function InvoicesPage() {
 
         // B. Filter & Add LOLO Rows
         const relevantLolos = (reg as any).lolo_records?.filter((l: any) => {
+          // Selalu filter sampai tanggal invoice
+          if (l.lolo_at > inv.invoice_date) return false;
           if (!billedFrom) return true;
-          return l.lolo_at > billedFrom && l.lolo_at <= inv.invoice_date;
+          return l.lolo_at > billedFrom;
         }) || [];
 
         // Urutkan LOLO berdasarkan tanggal agar sesuai (chronological order)
@@ -628,13 +636,18 @@ export default function InvoicesPage() {
                         {/* SELECT ALL & COUNT LABEL */}
                         {invoiceableRegs.length > 0 && (() => {
                           const filteredRegs = invoiceableRegs.filter(r => {
+                            // Filter: skip registrasi yang pertama kali masuk SETELAH tanggal invoice
+                            const loloRecsAll = [...((r as any).lolo_records || [])].sort((a: any, b: any) => new Date(a.lolo_at).getTime() - new Date(b.lolo_at).getTime());
+                            const firstLolo = loloRecsAll[0];
+                            if (firstLolo && createForm.invoice_date && firstLolo.lolo_at.substring(0, 10) > createForm.invoice_date) return false;
+
                             if (regStatusFilter === "CLOSED" && r.record_status !== "CLOSED") return false;
                             if (regSearch && !r.container_number.toLowerCase().includes(regSearch.toLowerCase())) return false;
                             const storageRecs = [...((r as any).storage_records || [])].sort((a, b) => new Date(a.start_date).getTime() - new Date(b.start_date).getTime());
                             if (regYardFilter && String(storageRecs.length > 0 ? storageRecs[storageRecs.length - 1].yard_id : null) !== regYardFilter) return false;
                             if (regPackageFilter && String(r.package_id) !== regPackageFilter) return false;
                             if (!filterRegFrom && !filterRegTo) return true;
-                            const loloRecs = [...((r as any).lolo_records || [])].sort((a, b) => new Date(a.lolo_at).getTime() - new Date(b.lolo_at).getTime());
+                            const loloRecs = loloRecsAll;
                             if (r.record_status === 'OPEN') {
                               const firstLoloOff = loloRecs.find((l: any) => l.operation_type === "LIFT_OFF");
                               if (!firstLoloOff) return true;
@@ -680,13 +693,18 @@ export default function InvoicesPage() {
 
                     <div className="space-y-2 max-h-48 overflow-y-auto border border-slate-700 rounded-lg p-3">
                       {invoiceableRegs.filter(r => {
+                        // Filter: skip registrasi yang pertama kali masuk SETELAH tanggal invoice
+                        const loloRecsAll = [...((r as any).lolo_records || [])].sort((a: any, b: any) => new Date(a.lolo_at).getTime() - new Date(b.lolo_at).getTime());
+                        const firstLolo = loloRecsAll[0];
+                        if (firstLolo && createForm.invoice_date && firstLolo.lolo_at.substring(0, 10) > createForm.invoice_date) return false;
+
                         if (regStatusFilter === "CLOSED" && r.record_status !== "CLOSED") return false;
                         if (regSearch && !r.container_number.toLowerCase().includes(regSearch.toLowerCase())) return false;
                         const storageRecs = [...((r as any).storage_records || [])].sort((a, b) => new Date(a.start_date).getTime() - new Date(b.start_date).getTime());
                         if (regYardFilter && String(storageRecs.length > 0 ? storageRecs[storageRecs.length - 1].yard_id : null) !== regYardFilter) return false;
                         if (regPackageFilter && String(r.package_id) !== regPackageFilter) return false;
                         if (!filterRegFrom && !filterRegTo) return true;
-                        const loloRecs = [...((r as any).lolo_records || [])].sort((a, b) => new Date(a.lolo_at).getTime() - new Date(b.lolo_at).getTime());
+                        const loloRecs = loloRecsAll;
                         if (r.record_status === 'OPEN') {
                           const firstLoloOff = loloRecs.find((l: any) => l.operation_type === "LIFT_OFF");
                           if (!firstLoloOff) return true;
