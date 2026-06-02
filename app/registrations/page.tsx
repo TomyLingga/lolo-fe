@@ -189,6 +189,7 @@ export default function RegistrationsPage() {
         "Jam Masuk": formatTime(firstLiftOff?.lolo_at ?? r.created_at),
         "Tgl Keluar": d(lastLiftOn?.lolo_at ?? null),
         "Jam Keluar": lastLiftOn ? formatTime(lastLiftOn.lolo_at) : "-",
+        "Terakhir Ditagih": r.last_invoiced_at ? formatDate(r.last_invoiced_at) : "-",
       };
     });
 
@@ -526,6 +527,7 @@ export default function RegistrationsPage() {
                   <th className="px-4 py-3 text-left table-header whitespace-nowrap">Status</th>
                   <th className="px-4 py-3 text-left table-header whitespace-nowrap">Posisi</th>
                   <th className="px-4 py-3 text-left table-header whitespace-nowrap">In / Out</th>
+                  <th className="px-4 py-3 text-left table-header whitespace-nowrap">Terakhir Ditagih</th>
                   <th className="px-4 py-3 text-left table-header whitespace-nowrap">Aksi</th>
                 </tr>
                 <tr className="bg-slate-900/40">
@@ -547,11 +549,12 @@ export default function RegistrationsPage() {
                   <td className="px-2 py-1"></td>
                   <td className="px-2 py-1"></td>
                   <td className="px-2 py-1"></td>
+                  <td className="px-2 py-1"></td>
                 </tr>
               </thead>
               <tbody>
                 {loading ? (
-                  <tr><td colSpan={9} className="px-4 py-12 text-center text-slate-500">
+                  <tr><td colSpan={11} className="px-4 py-12 text-center text-slate-500">
                     <div className="flex items-center justify-center gap-2">
                       <svg className="animate-spin w-4 h-4" fill="none" viewBox="0 0 24 24">
                         <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
@@ -561,7 +564,7 @@ export default function RegistrationsPage() {
                     </div>
                   </td></tr>
                 ) : filtered.length === 0 ? (
-                  <tr><td colSpan={9} className="px-4 py-12 text-center text-slate-500">Tidak ada data</td></tr>
+                  <tr><td colSpan={11} className="px-4 py-12 text-center text-slate-500">Tidak ada data</td></tr>
                 ) : filtered.map(reg => {
 
                   const loloRecs = [...((reg as any).lolo_records || [])].sort((a, b) => 
@@ -639,7 +642,11 @@ export default function RegistrationsPage() {
                           );
                         })()}
                       </td>
+                      <td className="px-4 py-3 text-slate-300 text-xs font-mono">
+                        {reg.last_invoiced_at ? formatDate(reg.last_invoiced_at) : "-"}
+                      </td>
                       <td className="px-4 py-3">
+
                         <div className="flex items-center gap-1 flex-wrap">
 
                           {reg.record_status === "OPEN" && reg.is_active && (

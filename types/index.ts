@@ -145,6 +145,7 @@ export interface Registration {
   cargo_status?: CargoStatus;
   package?: Package;
   last_lolo_type?: "LIFT_ON" | "LIFT_OFF";
+  last_invoiced_at?: string;
   current_yard?: Yard;
   current_block?: Block;
   lolo_records?: LoloRecord[];
