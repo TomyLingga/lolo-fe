@@ -161,17 +161,61 @@ export default function WarehouseInvoiceFormModal({ open, onClose, onSaved }: Pr
             </div>
 
             <div className="space-y-4">
-              <div className="bg-slate-800/40 p-4 rounded-lg space-y-3">
-                <p className="text-xs font-bold text-slate-500 uppercase">Pajak (Tax)</p>
-                {allTaxes.map(t => (
-                  <label key={t.id} className="flex items-center gap-2 cursor-pointer">
-                    <input type="checkbox" checked={selectedTaxIds.includes(t.id)} onChange={e => {
-                      if (e.target.checked) setSelectedTaxIds(p => p.includes(t.id) ? p : [...p, t.id]);
-                      else setSelectedTaxIds(p => p.filter(id => id !== t.id));
-                    }} />
-                    <span className="text-sm text-slate-300">{t.name} ({t.value}{t.value_type === "PERCENTAGE" ? "%" : ""})</span>
-                  </label>
-                ))}
+              <div className="bg-slate-800/40 p-4 rounded-lg space-y-4">
+                <div>
+                  <p className="text-xs font-bold text-slate-500 uppercase mb-2">Pilih Pajak (Tax)</p>
+                  <div className="space-y-1.5 max-h-40 overflow-y-auto border border-slate-700 rounded-lg p-2 bg-slate-900/30">
+                    {allTaxes.map(t => (
+                      <div key={t.id} className="flex items-center justify-between p-1.5 hover:bg-slate-800 rounded transition-colors text-xs">
+                        <div className="flex-1 min-w-0 pr-2">
+                          <span className="font-medium text-slate-300 block truncate">{t.name}</span>
+                          <span className="text-[10px] text-slate-400">
+                            {t.value}{t.value_type === "PERCENTAGE" ? "%" : ""}
+                            <span className={cn("ml-2 px-1.5 py-0.2 rounded text-[8px] font-bold",
+                              t.type === "ADD" ? "bg-red-500/20 text-red-400" : "bg-green-500/20 text-green-400")}>
+                              {t.type === "ADD" ? "Tambah" : "Kurang"}
+                            </span>
+                          </span>
+                        </div>
+                        <button type="button" className="btn btn-sm btn-primary py-0.5 px-2 text-[10px] whitespace-nowrap"
+                          onClick={() => setSelectedTaxIds(p => [...p, t.id])}>
+                          + Tambah
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                {selectedTaxIds.length > 0 && (
+                  <div>
+                    <p className="text-xs font-bold text-slate-400 uppercase mb-2">Pajak Terpilih</p>
+                    <div className="space-y-1.5 max-h-40 overflow-y-auto border border-slate-700 rounded-lg p-2 bg-slate-900/50">
+                      {selectedTaxIds.map((id, index) => {
+                        const t = allTaxes.find(tax => tax.id === id);
+                        if (!t) return null;
+                        return (
+                          <div key={`${id}-${index}`} className="flex items-center justify-between bg-slate-800/40 px-2 py-1.5 rounded border border-slate-750 text-xs">
+                            <div className="flex-1 min-w-0 pr-2">
+                              <span className="font-semibold text-slate-300 truncate block">{t.name}</span>
+                              <span className="text-[10px] text-slate-400">
+                                {t.value}{t.value_type === "PERCENTAGE" ? "%" : ""}
+                                <span className={cn("ml-2 px-1.5 py-0.2 rounded text-[8px] font-bold",
+                                  t.type === "ADD" ? "bg-red-500/20 text-red-400" : "bg-green-500/20 text-green-400")}>
+                                  {t.type === "ADD" ? "Tambah" : "Kurang"}
+                                </span>
+                              </span>
+                            </div>
+                            <button type="button" className="text-red-400 hover:text-red-300 font-bold px-1.5 py-0.5 whitespace-nowrap"
+                              onClick={() => setSelectedTaxIds(p => p.filter((_, idx) => idx !== index))}>
+                              Hapus
+                            </button>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
+
                 <div className="pt-3 border-t border-slate-700 space-y-1">
                   <div className="flex justify-between text-xs text-slate-400"><span>Subtotal:</span><span>{formatCurrency(subtotal)}</span></div>
                   <div className="flex justify-between text-lg font-bold text-brand-400"><span>Total:</span><span>{formatCurrency(calculateGrandTotal())}</span></div>

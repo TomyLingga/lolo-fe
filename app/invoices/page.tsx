@@ -867,36 +867,69 @@ export default function InvoicesPage() {
             )}
 
             {selectedFf && availableTaxes.length > 0 && (
-              <div>
-                <div className="flex items-center justify-between mb-2">
-                  <label className="label mb-0">Pilih Tax / Discount</label>
-                  <div className="relative w-48 group">
-                    <input type="text" className="input py-1 pl-8 text-xs bg-slate-800/50 border-slate-700" 
-                      placeholder="Cari Tax..." value={taxSearch} onChange={e => setTaxSearch(e.target.value)} />
-                    <svg className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-500 group-focus-within:text-brand-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-                    </svg>
+              <div className="space-y-3">
+                <div>
+                  <div className="flex items-center justify-between mb-2">
+                    <label className="label mb-0">Pilih Tax / Discount</label>
+                    <div className="relative w-48 group">
+                      <input type="text" className="input py-1 pl-8 text-xs bg-slate-800/50 border-slate-700" 
+                        placeholder="Cari Tax..." value={taxSearch} onChange={e => setTaxSearch(e.target.value)} />
+                      <svg className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-500 group-focus-within:text-brand-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                      </svg>
+                    </div>
                   </div>
-                </div>
-                <div className="space-y-2 max-h-40 overflow-y-auto border border-slate-700 rounded-lg p-3">
-                  {availableTaxes.filter(t => t.name.toLowerCase().includes(taxSearch.toLowerCase())).map(tax => (
-                    <label key={tax.id} className="flex items-center gap-3 cursor-pointer hover:bg-slate-800 p-2 rounded transition-colors">
-                      <input type="checkbox" className="rounded border-slate-600 focus:ring-brand-500 text-brand-500"
-                        checked={selectedTaxIds.includes(tax.id)}
-                        onChange={e => setSelectedTaxIds(prev => e.target.checked ? (prev.includes(tax.id) ? prev : [...prev, tax.id]) : prev.filter(id => id !== tax.id))} />
-                      <div className="flex-1">
-                        <span className="text-sm font-medium text-white">{tax.name}</span>
-                        <div className="text-xs text-slate-400 mt-0.5">
-                          {tax.value_type === "PERCENTAGE" ? `${tax.value}%` : formatCurrency(Number(tax.value))}
-                          <span className={cn("ml-2 px-1.5 py-0.5 rounded text-[10px]",
-                            tax.type === "ADD" ? "bg-red-500/20 text-red-400" : "bg-green-500/20 text-green-400")}>
-                            {tax.type === "ADD" ? "Tambah" : "Kurang"}
+                  <div className="space-y-1 max-h-40 overflow-y-auto border border-slate-700 rounded-lg p-2 bg-slate-900/30">
+                    {availableTaxes.filter(t => t.name.toLowerCase().includes(taxSearch.toLowerCase())).map(tax => (
+                      <div key={tax.id} className="flex items-center justify-between hover:bg-slate-800 p-2 rounded transition-colors text-xs">
+                        <div className="flex-1 min-w-0 pr-2">
+                          <span className="font-medium text-white block truncate">{tax.name}</span>
+                          <span className="text-[10px] text-slate-400">
+                            {tax.value_type === "PERCENTAGE" ? `${tax.value}%` : formatCurrency(Number(tax.value))}
+                            <span className={cn("ml-2 px-1.5 py-0.2 rounded text-[8px] font-bold",
+                              tax.type === "ADD" ? "bg-red-500/20 text-red-400" : "bg-green-500/20 text-green-400")}>
+                              {tax.type === "ADD" ? "Tambah" : "Kurang"}
+                            </span>
                           </span>
                         </div>
+                        <button type="button" className="btn btn-sm btn-primary py-0.5 px-2 text-[10px] whitespace-nowrap"
+                          onClick={() => setSelectedTaxIds(prev => [...prev, tax.id])}>
+                          + Tambah
+                        </button>
                       </div>
-                    </label>
-                  ))}
+                    ))}
+                  </div>
                 </div>
+
+                {selectedTaxIds.length > 0 && (
+                  <div>
+                    <label className="label text-xs font-semibold text-slate-400 mb-1.5">Daftar Biaya & Diskon Terpilih</label>
+                    <div className="space-y-1.5 max-h-48 overflow-y-auto border border-slate-700 rounded-lg p-2.5 bg-slate-900/50">
+                      {selectedTaxIds.map((id, index) => {
+                        const tax = availableTaxes.find(t => t.id === id);
+                        if (!tax) return null;
+                        return (
+                          <div key={`${id}-${index}`} className="flex items-center justify-between bg-slate-800/40 px-2 py-1.5 rounded border border-slate-750 text-xs">
+                            <div className="flex-1 min-w-0 pr-2">
+                              <span className="font-semibold text-white truncate block">{tax.name}</span>
+                              <span className="text-[10px] text-slate-400">
+                                {tax.value_type === "PERCENTAGE" ? `${tax.value}%` : formatCurrency(Number(tax.value))}
+                                <span className={cn("ml-2 px-1.5 py-0.2 rounded text-[8px] font-bold",
+                                  tax.type === "ADD" ? "bg-red-500/20 text-red-400" : "bg-green-500/20 text-green-400")}>
+                                  {tax.type === "ADD" ? "Tambah" : "Kurang"}
+                                </span>
+                              </span>
+                            </div>
+                            <button type="button" className="text-red-400 hover:text-red-300 font-bold px-1.5 py-0.5 whitespace-nowrap"
+                              onClick={() => setSelectedTaxIds(prev => prev.filter((_, idx) => idx !== index))}>
+                              Hapus
+                            </button>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
               </div>
             )}
 
