@@ -3,6 +3,7 @@ import { useState, useEffect } from "react";
 import Modal from "@/components/ui/Modal";
 import { storageRecordsApi } from "@/lib/api";
 import { getErrorMessage } from "@/lib/utils";
+import type { CargoStatus } from "@/types";
 import toast from "react-hot-toast";
 
 interface Props {
@@ -10,7 +11,8 @@ interface Props {
   onClose: () => void;
   onSaved: () => void;
   storageId: number | null;
-  initialData?: { start_date: string; end_date: string | null; moved_at: string; note: string } | null;
+  cargoStatuses?: CargoStatus[];
+  initialData?: { cargo_status_id?: number; start_date: string; end_date: string | null; moved_at: string; note: string } | null;
 }
 
 const FormWrapper = ({ label, req, children }: { label: string; req?: boolean; children: React.ReactNode }) => (
@@ -20,9 +22,10 @@ const FormWrapper = ({ label, req, children }: { label: string; req?: boolean; c
   </div>
 );
 
-export default function StorageEditModal({ open, onClose, onSaved, storageId, initialData }: Props) {
+export default function StorageEditModal({ open, onClose, onSaved, storageId, initialData, cargoStatuses = [] }: Props) {
   const [loading, setLoading] = useState(false);
   const [form, setForm] = useState({
+    cargo_status_id: "",
     start_date: "",
     end_date: "",
     moved_at: "",
@@ -31,11 +34,12 @@ export default function StorageEditModal({ open, onClose, onSaved, storageId, in
 
   useEffect(() => {
     if (!open || !storageId) {
-      setForm({ start_date: "", end_date: "", moved_at: "", note: "" });
+      setForm({ cargo_status_id: "", start_date: "", end_date: "", moved_at: "", note: "" });
       return;
     }
     if (initialData) {
       setForm({
+        cargo_status_id: initialData.cargo_status_id ? String(initialData.cargo_status_id) : "",
         start_date: initialData.start_date || "",
         end_date: initialData.end_date || "",
         moved_at: initialData.moved_at ? initialData.moved_at.replace(" ", "T").substring(0, 16) : "",
@@ -44,7 +48,7 @@ export default function StorageEditModal({ open, onClose, onSaved, storageId, in
     }
   }, [open, storageId, initialData]);
 
-  const set = (k: string) => (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) =>
+  const set = (k: string) => (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) =>
     setForm(p => ({ ...p, [k]: e.target.value }));
 
   async function handleSubmit(e: React.FormEvent) {
@@ -53,6 +57,9 @@ export default function StorageEditModal({ open, onClose, onSaved, storageId, in
     setLoading(true);
     try {
       const payload: any = { note: form.note };
+      if (form.cargo_status_id) {
+        payload.cargo_status_id = Number(form.cargo_status_id);
+      }
       if (form.start_date) {
         payload.start_date = form.start_date;
       }
@@ -63,7 +70,7 @@ export default function StorageEditModal({ open, onClose, onSaved, storageId, in
         payload.moved_at = form.moved_at.replace("T", " ") + ":00";
       }
       await storageRecordsApi.update(storageId, payload);
-      toast.success("Catatan storage diperbarui");
+      toast.success("Riwayat storage diperbarui");
       onSaved();
     } catch (err) {
       toast.error(getErrorMessage(err));
@@ -75,8 +82,26 @@ export default function StorageEditModal({ open, onClose, onSaved, storageId, in
   return (
     <Modal open={open} onClose={onClose} title="Edit Riwayat Storage" size="sm">
       <form onSubmit={handleSubmit} className="space-y-4">
-        
-        {/* We only allow editing note and start_date */}
+
+        {/* Cargo Status */}
+        {cargoStatuses.length > 0 && (
+          <FormWrapper label="Status Kargo">
+            <select
+              className="input"
+              value={form.cargo_status_id}
+              onChange={set("cargo_status_id")}
+            >
+              <option value="">-- Tidak Diubah --</option>
+              {cargoStatuses.map(cs => (
+                <option key={cs.id} value={cs.id}>{cs.description}</option>
+              ))}
+            </select>
+            {form.cargo_status_id && form.cargo_status_id !== String(initialData?.cargo_status_id) && (
+              <p className="text-xs text-amber-400 mt-1">⚠ Tarif storage akan disesuaikan otomatis dengan status kargo baru</p>
+            )}
+          </FormWrapper>
+        )}
+
         <FormWrapper label="Tanggal Mulai">
           <input className="input" type="date" value={form.start_date} onChange={set("start_date")} />
         </FormWrapper>
