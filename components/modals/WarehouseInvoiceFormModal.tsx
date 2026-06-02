@@ -166,7 +166,7 @@ export default function WarehouseInvoiceFormModal({ open, onClose, onSaved }: Pr
                 {allTaxes.map(t => (
                   <label key={t.id} className="flex items-center gap-2 cursor-pointer">
                     <input type="checkbox" checked={selectedTaxIds.includes(t.id)} onChange={e => {
-                      if (e.target.checked) setSelectedTaxIds(p => [...p, t.id]);
+                      if (e.target.checked) setSelectedTaxIds(p => p.includes(t.id) ? p : [...p, t.id]);
                       else setSelectedTaxIds(p => p.filter(id => id !== t.id));
                     }} />
                     <span className="text-sm text-slate-300">{t.name} ({t.value}{t.value_type === "PERCENTAGE" ? "%" : ""})</span>

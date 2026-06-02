@@ -883,7 +883,7 @@ export default function InvoicesPage() {
                     <label key={tax.id} className="flex items-center gap-3 cursor-pointer hover:bg-slate-800 p-2 rounded transition-colors">
                       <input type="checkbox" className="rounded border-slate-600 focus:ring-brand-500 text-brand-500"
                         checked={selectedTaxIds.includes(tax.id)}
-                        onChange={e => setSelectedTaxIds(prev => e.target.checked ? [...prev, tax.id] : prev.filter(id => id !== tax.id))} />
+                        onChange={e => setSelectedTaxIds(prev => e.target.checked ? (prev.includes(tax.id) ? prev : [...prev, tax.id]) : prev.filter(id => id !== tax.id))} />
                       <div className="flex-1">
                         <span className="text-sm font-medium text-white">{tax.name}</span>
                         <div className="text-xs text-slate-400 mt-0.5">
