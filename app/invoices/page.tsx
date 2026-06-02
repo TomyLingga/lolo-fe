@@ -72,9 +72,11 @@ export default function InvoicesPage() {
   const seqCheckRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const [payConfirm, setPayConfirm] = useState(false);
+  const [unpayConfirm, setUnpayConfirm] = useState(false);
   const [deactivateConfirm, setDeactivateConfirm] = useState(false);
   const [selectedInv, setSelectedInv] = useState<Invoice | null>(null);
   const [actionLoading, setActionLoading] = useState(false);
+
   const [loadingFfs, setLoadingFfs] = useState(false);
 
   async function fetchData() {
@@ -322,11 +324,19 @@ export default function InvoicesPage() {
 
         // B. Filter & Add LOLO Rows
         const relevantLolos = (reg as any).lolo_records?.filter((l: any) => {
-          // Selalu filter sampai tanggal invoice
-          if (l.lolo_at > inv.invoice_date) return false;
+          // Selalu filter sampai tanggal invoice (hanya bandingkan tanggal, sama seperti backend whereDate)
+          const loloDateStr = l.lolo_at.substring(0, 10);
+          const invoiceDateStr = inv.invoice_date.substring(0, 10);
+          if (loloDateStr > invoiceDateStr) return false;
+          
           if (!billedFrom) return true;
-          return l.lolo_at > billedFrom;
+          
+          // Jika billedFrom diset, pastikan lolo_at setelah billedFrom tanggal & waktu (end of day)
+          const sinceDate = new Date(billedFrom);
+          sinceDate.setHours(23, 59, 59, 999);
+          return new Date(l.lolo_at).getTime() > sinceDate.getTime();
         }) || [];
+
 
         // Urutkan LOLO berdasarkan tanggal agar sesuai (chronological order)
         relevantLolos.sort((a: any, b: any) => new Date(a.lolo_at).getTime() - new Date(b.lolo_at).getTime());
@@ -412,6 +422,19 @@ export default function InvoicesPage() {
     } catch (err) { toast.error(getErrorMessage(err)); }
     finally { setActionLoading(false); }
   }
+
+  async function handleUnpay() {
+    if (!selectedInv) return;
+    setActionLoading(true);
+    try {
+      await invoicesApi.unpay(selectedInv.id);
+      toast.success("Invoice dikembalikan ke DRAFT");
+      setUnpayConfirm(false);
+      fetchData();
+    } catch (err) { toast.error(getErrorMessage(err)); }
+    finally { setActionLoading(false); }
+  }
+
 
   async function handleDeactivate() {
     if (!selectedInv) return;
@@ -549,6 +572,15 @@ export default function InvoicesPage() {
                             </button>
                           )}
 
+                          {isAdmin && inv.status === "PAID" && (
+                            <button onClick={() => { setSelectedInv(inv); setUnpayConfirm(true); }}
+                              className="btn btn-sm btn-ghost text-amber-500 hover:text-amber-400" title="Kembalikan ke Draft">
+                              <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6l6-6" />
+                              </svg>
+                            </button>
+                          )}
+
                           {isAdmin && (
                             <button onClick={() => { setSelectedInv(inv); setDeactivateConfirm(true); }}
                               className="btn btn-sm btn-ghost text-red-400 hover:text-red-300" title="Nonaktifkan">
@@ -557,6 +589,7 @@ export default function InvoicesPage() {
                               </svg>
                             </button>
                           )}
+
                         </div>
                       </td>
                     </tr>
@@ -894,9 +927,13 @@ export default function InvoicesPage() {
         <ConfirmDialog open={payConfirm} onClose={() => setPayConfirm(false)} onConfirm={handlePay}
           title="Tandai Invoice Lunas" message={`Tandai invoice ${selectedInv?.invoice_number || `#${selectedInv?.id}`} sebagai LUNAS?`}
           confirmLabel="Tandai Lunas" loading={actionLoading} />
+        <ConfirmDialog open={unpayConfirm} onClose={() => setUnpayConfirm(false)} onConfirm={handleUnpay}
+          title="Kembalikan Invoice ke Draft" message={`Kembalikan status invoice ${selectedInv?.invoice_number || `#${selectedInv?.id}`} menjadi DRAFT?`}
+          confirmLabel="Kembalikan ke Draft" loading={actionLoading} />
         <ConfirmDialog open={deactivateConfirm} onClose={() => setDeactivateConfirm(false)} onConfirm={handleDeactivate}
           title="Nonaktifkan Invoice" message={`Nonaktifkan invoice ${selectedInv?.invoice_number || `#${selectedInv?.id}`}?`}
           confirmLabel="Nonaktifkan" danger loading={actionLoading} />
+
       </div>
     </AppLayout>
   );

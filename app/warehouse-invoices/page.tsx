@@ -20,8 +20,11 @@ export default function WarehouseInvoicesPage() {
   const [formOpen, setFormOpen] = useState(false);
   const [selectedInv, setSelectedInv] = useState<WarehouseInvoice | null>(null);
   const [payConfirm, setPayConfirm] = useState(false);
+  const [unpayConfirm, setUnpayConfirm] = useState(false);
   const [cancelConfirm, setCancelConfirm] = useState(false);
   const [actionLoading, setActionLoading] = useState(false);
+
+  const isAdmin = typeof window !== "undefined" && localStorage.getItem("user_role") === "admin";
 
   const fetchData = useCallback(async () => {
     setLoading(true);
@@ -52,6 +55,15 @@ export default function WarehouseInvoicesPage() {
     finally { setActionLoading(false); }
   }
 
+  async function handleUnpay() {
+    if (!selectedInv) return; setActionLoading(true);
+    try {
+      await warehouseInvoicesApi.unpay(selectedInv.id);
+      toast.success("Invoice dikembalikan ke DRAFT"); setUnpayConfirm(false); fetchData();
+    } catch (err) { toast.error(getErrorMessage(err)); }
+    finally { setActionLoading(false); }
+  }
+
   async function handleCancel() {
     if (!selectedInv) return; setActionLoading(true);
     try {
@@ -64,6 +76,7 @@ export default function WarehouseInvoicesPage() {
   function handleExport(inv: WarehouseInvoice) {
     window.open(`${process.env.NEXT_PUBLIC_API_URL}/warehouse-invoices/${inv.id}/pdf`, "_blank");
   }
+
 
   return (
     <AppLayout>
@@ -120,6 +133,11 @@ export default function WarehouseInvoicesPage() {
                             </button>
                           </>
                         )}
+                        {isAdmin && inv.status === "PAID" && inv.is_active && (
+                          <button onClick={() => { setSelectedInv(inv); setUnpayConfirm(true); }} className="btn btn-sm btn-ghost text-amber-500" title="Kembalikan ke Draft">
+                            <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6l6-6" /></svg>
+                          </button>
+                        )}
                       </div>
                     </td>
                   </tr>
@@ -134,10 +152,15 @@ export default function WarehouseInvoicesPage() {
         <ConfirmDialog open={payConfirm} onClose={() => setPayConfirm(false)} onConfirm={handlePay}
           title="Tandai Lunas" message="Yakin tandai invoice ini sebagai PAID? Tindakan ini tidak dapat dibatalkan."
           confirmLabel="Ya, Lunas" loading={actionLoading} />
+
+        <ConfirmDialog open={unpayConfirm} onClose={() => setUnpayConfirm(false)} onConfirm={handleUnpay}
+          title="Kembalikan ke Draft" message={`Kembalikan status invoice ${selectedInv?.invoice_number || `#${selectedInv?.id}`} menjadi DRAFT?`}
+          confirmLabel="Kembalikan ke Draft" loading={actionLoading} />
         
         <ConfirmDialog open={cancelConfirm} onClose={() => setCancelConfirm(false)} onConfirm={handleCancel}
           title="Batalkan Invoice" message="Membatalkan invoice akan mengembalikan status BA ke belum diinvoice. Lanjutkan?"
           confirmLabel="Ya, Batalkan" danger loading={actionLoading} />
+
       </div>
     </AppLayout>
   );

@@ -167,7 +167,9 @@ export const invoicesApi = {
   update: (id: number, data: Partial<Invoice>) =>
     api.put<{ data: Invoice }>(`/invoices/${id}`, data),
   pay: (id: number) => api.get(`/invoices/${id}/pay`),
+  unpay: (id: number) => api.get(`/invoices/${id}/unpay`),
   deactivate: (id: number) => api.delete(`/invoices/${id}`),
+
   getInvoiceableRegistrations: (ffId: number) =>
     api.get<{ data: { freight_forwarder: FreightForwarder, registrations: Registration[] } }>(`/freight-forwarders/${ffId}/registrations/invoiceable`),
   getPdfUrl: (id: number) =>
@@ -319,7 +321,9 @@ export const warehouseInvoicesApi = {
   getById: (id: number) => api.get<{ data: WarehouseInvoice }>(`/warehouse-invoices/${id}`),
   create: (data: any) => api.post<{ data: WarehouseInvoice }>("/warehouse-invoices", data),
   pay: (id: number) => api.get(`/warehouse-invoices/${id}/pay`),
+  unpay: (id: number) => api.get(`/warehouse-invoices/${id}/unpay`),
   deactivate: (id: number) => api.delete(`/warehouse-invoices/${id}`),
+
   getInvoiceableBas: (ffId: number) =>
     api.get<{ data: WarehouseBeritaAcara[] }>(`/freight-forwarders/${ffId}/warehouse-berita-acaras/invoiceable`),
   getPdfUrl: (id: number) =>
