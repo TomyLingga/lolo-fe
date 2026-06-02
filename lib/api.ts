@@ -159,10 +159,10 @@ export const remarksApi = {
 
 // ─── Invoices ────────────────────────────────────────────────────────────────
 export const invoicesApi = {
-  getAll: (params?: { date_from?: string; date_to?: string; status?: string }) =>
+  getAll: (params?: { date_from?: string; date_to?: string; status?: string; search?: string }) =>
     api.get<{ data: Invoice[] }>("/invoices", { params }),
   getById: (id: number) => api.get<{ data: Invoice }>(`/invoices/${id}`),
-  create: (data: Partial<Invoice> & { registration_ids: number[], tax_ids?: number[] }) =>
+  create: (data: Partial<Invoice> & { invoice_sequence: number, registration_ids: number[], tax_ids?: number[] }) =>
     api.post<{ data: Invoice }>("/invoices", data),
   update: (id: number, data: Partial<Invoice>) =>
     api.put<{ data: Invoice }>(`/invoices/${id}`, data),

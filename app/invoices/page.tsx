@@ -66,6 +66,10 @@ export default function InvoicesPage() {
   const [packages, setPackages] = useState<Package[]>([]);
   const [taxSearch, setTaxSearch] = useState("");
   const [creating, setCreating] = useState(false);
+  const [invoiceSequence, setInvoiceSequence] = useState("");
+  const [seqExists, setSeqExists] = useState(false);
+  const [checkingSeq, setCheckingSeq] = useState(false);
+  const seqCheckRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const [payConfirm, setPayConfirm] = useState(false);
   const [deactivateConfirm, setDeactivateConfirm] = useState(false);
@@ -119,7 +123,31 @@ export default function InvoicesPage() {
       .catch(() => { })
       .finally(() => setLoadingFfs(false));
     setCreateForm(p => ({ ...p, invoice_date: getLocalDate(new Date()) }));
+    setInvoiceSequence("");
+    setSeqExists(false);
   }, [createOpen]);
+
+  // Real-time cek duplikat nomor invoice
+  function handleSeqChange(val: string) {
+    setInvoiceSequence(val);
+    setSeqExists(false);
+    if (seqCheckRef.current) clearTimeout(seqCheckRef.current);
+    const num = parseInt(val);
+    if (!val || isNaN(num) || num < 1 || !createForm.invoice_date) return;
+    setCheckingSeq(true);
+    seqCheckRef.current = setTimeout(async () => {
+      try {
+        const date = new Date(createForm.invoice_date);
+        const roman = ['I','II','III','IV','V','VI','VII','VIII','IX','X','XI','XII'];
+        const month = roman[date.getMonth()];
+        const year = date.getFullYear();
+        const candidate = `SMNT/PORT/${String(num).padStart(3, '0')}/${month}/${year}`;
+        const res = await invoicesApi.getAll({ search: candidate });
+        const found = (res.data.data || []).some((inv: any) => inv.invoice_number === candidate);
+        setSeqExists(found);
+      } catch { /* ignore */ } finally { setCheckingSeq(false); }
+    }, 500);
+  }
 
   useEffect(() => {
     if (!selectedFf) {
@@ -168,11 +196,11 @@ export default function InvoicesPage() {
     if (!selectedRegIds.length) { toast.error("Pilih minimal 1 registrasi"); return; }
     setCreating(true);
     try {
-      await invoicesApi.create({ ...createForm, freight_forwarder_id: Number(selectedFf), registration_ids: selectedRegIds, tax_ids: selectedTaxIds });
+      await invoicesApi.create({ ...createForm, invoice_sequence: Number(invoiceSequence), freight_forwarder_id: Number(selectedFf), registration_ids: selectedRegIds, tax_ids: selectedTaxIds });
       toast.success("Invoice berhasil dibuat");
       setCreateOpen(false);
       setSelectedFf(""); setSelectedRegIds([]); setSelectedTaxIds([]); setFilterRegFrom(getLocalDate(startOfMonth)); setFilterRegTo(getLocalDate(today));
-      setRegStatusFilter("CLOSED"); setRegSearch(""); setRegYardFilter(""); setRegPackageFilter(""); setTaxSearch("");
+      setRegStatusFilter("CLOSED"); setRegSearch(""); setRegYardFilter(""); setRegPackageFilter(""); setTaxSearch(""); setInvoiceSequence(""); setSeqExists(false);
       fetchData();
     } catch (err) { toast.error(getErrorMessage(err)); }
     finally { setCreating(false); }
@@ -567,6 +595,38 @@ export default function InvoicesPage() {
                 <label className="label">Tanggal Invoice <span className="text-red-400">*</span></label>
                 <input className="input" type="date" required value={createForm.invoice_date} onChange={e => setCreateForm(p => ({ ...p, invoice_date: e.target.value }))} />
               </div>
+              <div>
+                <label className="label">No. Urut Invoice <span className="text-red-400">*</span></label>
+                <div className="relative">
+                  <input
+                    className={cn("input pr-8", seqExists && "border-red-500 focus:ring-red-500")}
+                    type="number" min={1} step={1} required
+                    placeholder="Contoh: 6"
+                    value={invoiceSequence}
+                    onChange={e => handleSeqChange(e.target.value)}
+                  />
+                  {checkingSeq && (
+                    <svg className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 animate-spin text-slate-400" fill="none" viewBox="0 0 24 24">
+                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                    </svg>
+                  )}
+                </div>
+                {invoiceSequence && createForm.invoice_date && (() => {
+                  const num = parseInt(invoiceSequence);
+                  if (isNaN(num) || num < 1) return null;
+                  const roman = ['I','II','III','IV','V','VI','VII','VIII','IX','X','XI','XII'];
+                  const d = new Date(createForm.invoice_date);
+                  const preview = `SMNT/PORT/${String(num).padStart(3,'0')}/${roman[d.getMonth()]}/${d.getFullYear()}`;
+                  return (
+                    <div className={cn("mt-1.5 flex items-center gap-2 text-xs", seqExists ? "text-red-400" : "text-emerald-400")}>
+                      <span className="font-mono font-semibold">{preview}</span>
+                      {seqExists && <span className="text-red-400">⚠ Nomor ini sudah digunakan</span>}
+                      {!seqExists && !checkingSeq && <span className="text-emerald-400">✓ Tersedia</span>}
+                    </div>
+                  );
+                })()}
+              </div>
             </div>
 
             {selectedFf && (
@@ -826,7 +886,7 @@ export default function InvoicesPage() {
 
             <div className="flex gap-3 justify-end pt-2 border-t border-slate-800">
               <button type="button" className="btn-secondary" onClick={() => setCreateOpen(false)}>Batal</button>
-              <button type="submit" className="btn-primary" disabled={creating}>{creating ? "Membuat..." : "Buat Invoice"}</button>
+              <button type="submit" className="btn-primary" disabled={creating || seqExists || checkingSeq}>{creating ? "Membuat..." : "Buat Invoice"}</button>
             </div>
           </form>
         </Modal>
