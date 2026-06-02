@@ -69,14 +69,30 @@ export default function WarehouseInvoiceFormModal({ open, onClose, onSaved }: Pr
   const firstBa = invoiceableBas.find(b => b.id === selectedBaIds[0]);
 
   const calculateGrandTotal = () => {
-    let total = subtotal;
+    // 1. Terapkan semua nominal adjustments ke subtotal untuk mendapatkan DPP (Dasar Pengenaan Pajak)
+    let dpp = subtotal;
     selectedTaxIds.forEach(tid => {
       const tax = allTaxes.find(t => t.id === tid);
       if (!tax) return;
-      const amount = tax.value_type === "NOMINAL" ? tax.value : subtotal * (tax.value / 100);
-      if (tax.type === "ADD") total += amount;
-      else total -= amount;
+      if (tax.value_type === "NOMINAL") {
+        const amount = Number(tax.value) || 0;
+        if (tax.type === "ADD") dpp += amount;
+        else dpp -= amount;
+      }
     });
+
+    // 2. Hitung persentase adjustments (seperti PPN/PPh) dari DPP hasil langkah 1
+    let total = dpp;
+    selectedTaxIds.forEach(tid => {
+      const tax = allTaxes.find(t => t.id === tid);
+      if (!tax) return;
+      if (tax.value_type === "PERCENTAGE") {
+        const amount = dpp * ((Number(tax.value) || 0) / 100);
+        if (tax.type === "ADD") total += amount;
+        else total -= amount;
+      }
+    });
+
     return total;
   };
 
