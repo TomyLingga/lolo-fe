@@ -162,7 +162,7 @@ export default function InvoicesPage() {
     }
 
     setFetchingRegs(true);
-    invoicesApi.getInvoiceableRegistrations(Number(selectedFf))
+    invoicesApi.getInvoiceableRegistrations(Number(selectedFf), createForm.invoice_date)
       .then(r => {
         // Handle both axios data wrapper and direct response format
         const responseData = (r.data as any).data || r.data;
@@ -171,7 +171,7 @@ export default function InvoicesPage() {
       })
       .catch((err) => toast.error(getErrorMessage(err)))
       .finally(() => setFetchingRegs(false));
-  }, [selectedFf]);
+  }, [selectedFf, createForm.invoice_date]);
 
   let filtered = search
     ? data.filter(i => [i.invoice_number, i.freight_forwarder?.name, (i as any).freight_forwarders?.name].some(v => v?.toLowerCase().includes(search.toLowerCase())))

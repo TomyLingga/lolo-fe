@@ -170,8 +170,10 @@ export const invoicesApi = {
   unpay: (id: number) => api.get(`/invoices/${id}/unpay`),
   deactivate: (id: number) => api.delete(`/invoices/${id}`),
 
-  getInvoiceableRegistrations: (ffId: number) =>
-    api.get<{ data: { freight_forwarder: FreightForwarder, registrations: Registration[] } }>(`/freight-forwarders/${ffId}/registrations/invoiceable`),
+  getInvoiceableRegistrations: (ffId: number, invoiceDate?: string) =>
+    api.get<{ data: { freight_forwarder: FreightForwarder, registrations: Registration[] } }>(
+      `/freight-forwarders/${ffId}/registrations/invoiceable` + (invoiceDate ? `?invoice_date=${invoiceDate}` : '')
+    ),
   getPdfUrl: (id: number) =>
     `${process.env.NEXT_PUBLIC_API_URL}/invoices/${id}/pdf`,
 };
