@@ -155,7 +155,7 @@ export default function DashboardPage() {
       sub: `pada ${periodLabel} di ${selectedYardName}`,
     },
     {
-      label: `Proyeksi Pendapatan ${periodLabel}`,
+      label: `Proyeksi Pendapatan (Live)`,
       value: loading ? "—" : new Intl.NumberFormat("id-ID", { style: "currency", currency: "IDR", maximumFractionDigits: 0 }).format(stats.projected_revenue),
       icon: (
         <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">

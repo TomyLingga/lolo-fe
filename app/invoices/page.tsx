@@ -363,16 +363,49 @@ export default function InvoicesPage() {
       // Kita pastikan subtotal tetap akurat
 
       // 3. Add Summary Rows
-      data.push([]); // Spacer
-      data.push(["", "", "", "", "", "", "SUBTOTAL", Number(inv.subtotal)]);
-      
+      // Hitung subtotal dari baris aktual (agar konsisten dengan PDF yang juga menghitung ulang dari baris)
+      const rowSubtotal = data.slice(2).reduce((sum, row) => {
+        const total = typeof row[7] === 'number' ? row[7] : 0;
+        return sum + total;
+      }, 0);
+
+      // Hitung DPP (Dasar Pengenaan Pajak) = subtotal setelah semua nominal adjustment
+      let dpp = rowSubtotal;
       inv.taxes?.forEach(t => {
-        // Gunakan calculated_amount dari pivot
-        const taxAmt = t.pivot?.calculated_amount || 0;
-        data.push(["", "", "", "", "", "", t.name, Number(taxAmt)]);
+        const valueType = t.pivot?.tax_value_type || (t as any).value_type || "";
+        const taxValue = Number(t.pivot?.tax_value ?? (t as any).value ?? 0);
+        const taxType = (t.pivot?.tax_type || (t as any).type || "").toUpperCase();
+        if (valueType.toUpperCase() === "NOMINAL") {
+          if (taxType === "ADD") dpp += taxValue;
+          else dpp -= taxValue;
+        }
       });
 
-      data.push(["", "", "", "", "", "", "GRAND TOTAL", Number(inv.grand_total)]);
+      // Hitung amount setiap pajak berdasarkan DPP
+      let totalAdd = 0;
+      let totalDeduct = 0;
+
+      data.push([]); // Spacer
+      data.push(["", "", "", "", "", "", "SUBTOTAL", rowSubtotal]);
+
+      inv.taxes?.forEach(t => {
+        const valueType = t.pivot?.tax_value_type || (t as any).value_type || "";
+        const taxValue = Number(t.pivot?.tax_value ?? (t as any).value ?? 0);
+        const taxType = (t.pivot?.tax_type || (t as any).type || "").toUpperCase();
+
+        // Persentase dihitung dari DPP, nominal langsung pakai nilai
+        const calculatedAmt = valueType.toUpperCase() === "PERCENTAGE"
+          ? dpp * (taxValue / 100)
+          : taxValue;
+
+        if (taxType === "ADD") totalAdd += calculatedAmt;
+        else totalDeduct += calculatedAmt;
+
+        data.push(["", "", "", "", "", "", t.name, calculatedAmt]);
+      });
+
+      const recalcGrandTotal = rowSubtotal + totalAdd - totalDeduct;
+      data.push(["", "", "", "", "", "", "GRAND TOTAL", recalcGrandTotal]);
 
       const ws = XLSX.utils.aoa_to_sheet(data);
 
