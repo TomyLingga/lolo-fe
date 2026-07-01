@@ -221,6 +221,7 @@ export default function RegistrationsPage() {
 
         loloData.push({
           "No. Container": r.container_number,
+          "Ukuran": (r as any).size?.description || "-",
           "Urutan LOLO": index + 1,
           "Paket": (r as any).package?.code || "-",
           "Status": r.record_status,
@@ -293,10 +294,10 @@ export default function RegistrationsPage() {
     applyDateFormat(wsReg, ["J", "L"]);
     XLSX.utils.book_append_sheet(wb, wsReg, "Registrasi");
 
-    // Sheet LOLO — kolom G = Tanggal
+    // Sheet LOLO — kolom H = Tanggal
     if (loloData.length > 0) {
       const wsLolo = XLSX.utils.json_to_sheet(loloData);
-      applyDateFormat(wsLolo, ["G"]);
+      applyDateFormat(wsLolo, ["H"]);
       XLSX.utils.book_append_sheet(wb, wsLolo, "Riwayat LOLO");
     }
 
